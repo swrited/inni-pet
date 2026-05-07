@@ -3,6 +3,7 @@ const http = require('http');
 
 const MINIMAX_API_KEY = "sk-api-YYV9lvW4Eh1Y7yWUoI6h4J_yMNolXe0-IqL3cIqI1M_KiX1iO3ouRjMbYDvr8wpiBHrCWa7htpLJTmnAPpdMhAQSVupTr3f9WHoWWJWZA-7iKBjXrtmldJM";
 const MINIMAX_BASE_URL = "https://api.minimax.chat/v1";
+const gestureQueue = [];
 
 const log = (msg) => console.log(msg);
 
@@ -19,6 +20,32 @@ function createHandler(port) {
     }
 
     const url = req.url;
+
+    if (url === '/gesture' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ gesture: gestureQueue.shift() || null }));
+      return;
+    }
+
+    if (url === '/gesture' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        try {
+          const payload = JSON.parse(body || '{}');
+          if (payload.gesture) {
+            gestureQueue.push(payload.gesture);
+            log(`[Gesture] ${payload.gesture}`);
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: e.message }));
+        }
+      });
+      return;
+    }
 
     // /v1/models
     if (url === '/v1/models' || url === '/models' || url === '/api/tags') {

@@ -275,6 +275,7 @@
     let currentAudio = null; // 当前播放的音频
     let removeCursorTracker = null;
     let removePetClickListener = null;
+    let removeGestureCommandListener = null;
     let currentGesture = null;
 
     function easeOutBack(t) {
@@ -301,48 +302,60 @@
       };
     }
 
+    const gesturePresets = {
+      left: () => startGesture('左耳抖动', [
+        { time: 0, values: { ear_left: 0, ear_right: 0 } },
+        { time: 70, values: { ear_left: -30, ear_right: 0 } },
+        { time: 140, values: { ear_left: 30, ear_right: 0 } },
+        { time: 210, values: { ear_left: -30, ear_right: 0 } },
+        { time: 280, values: { ear_left: 30, ear_right: 0 } },
+        { time: 420, values: { ear_left: 0, ear_right: 0 } },
+        { time: 620, values: { ear_left: 0, ear_right: 0 } }
+      ]),
+      right: () => startGesture('右耳抖动', [
+        { time: 0, values: { ear_left: 0, ear_right: 0 } },
+        { time: 70, values: { ear_left: 0, ear_right: -30 } },
+        { time: 140, values: { ear_left: 0, ear_right: 30 } },
+        { time: 210, values: { ear_left: 0, ear_right: -30 } },
+        { time: 280, values: { ear_left: 0, ear_right: 30 } },
+        { time: 420, values: { ear_left: 0, ear_right: 0 } },
+        { time: 620, values: { ear_left: 0, ear_right: 0 } }
+      ]),
+      shake: () => startGesture('左右摇头', [
+        { time: 0, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
+        { time: 260, values: { ParamAngleZ: -22, ParamBodyAngleZ: -7 } },
+        { time: 560, values: { ParamAngleZ: 20, ParamBodyAngleZ: 6 } },
+        { time: 860, values: { ParamAngleZ: -12, ParamBodyAngleZ: -4 } },
+        { time: 1200, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } }
+      ]),
+      ears: () => startGesture('双耳抖动', [
+        { time: 0, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
+        { time: 70, values: { ear_left: 28, ear_right: 28, ParamAngleZ: 6 } },
+        { time: 140, values: { ear_left: -26, ear_right: -26, ParamAngleZ: -6 } },
+        { time: 210, values: { ear_left: 22, ear_right: 22, ParamAngleZ: 4 } },
+        { time: 280, values: { ear_left: -18, ear_right: -18, ParamAngleZ: -4 } },
+        { time: 360, values: { ear_left: 12, ear_right: 12, ParamAngleZ: 2 } },
+        { time: 450, values: { ear_left: -7, ear_right: -7, ParamAngleZ: 0 } },
+        { time: 620, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
+      ])
+    };
+
+    function playGesture(name) {
+      if (currentGesture) return;
+      if (name === 'random') return playRandomGesture();
+
+      const preset = gesturePresets[name];
+      if (!preset) {
+        console.log(`[Inni] 未知动作: ${name}`);
+        return;
+      }
+      preset();
+    }
+
     function playRandomGesture() {
       if (currentGesture) return;
-
-      const gestures = [
-        () => startGesture('左耳抖动', [
-          { time: 0, values: { ear_left: 0, ear_right: 0 } },
-          { time: 70, values: { ear_left: -30, ear_right: 0 } },
-          { time: 140, values: { ear_left: 30, ear_right: 0 } },
-          { time: 210, values: { ear_left: -30, ear_right: 0 } },
-          { time: 280, values: { ear_left: 30, ear_right: 0 } },
-          { time: 420, values: { ear_left: 0, ear_right: 0 } },
-          { time: 620, values: { ear_left: 0, ear_right: 0 } }
-        ]),
-        () => startGesture('右耳抖动', [
-          { time: 0, values: { ear_left: 0, ear_right: 0 } },
-          { time: 70, values: { ear_left: 0, ear_right: -30 } },
-          { time: 140, values: { ear_left: 0, ear_right: 30 } },
-          { time: 210, values: { ear_left: 0, ear_right: -30 } },
-          { time: 280, values: { ear_left: 0, ear_right: 30 } },
-          { time: 420, values: { ear_left: 0, ear_right: 0 } },
-          { time: 620, values: { ear_left: 0, ear_right: 0 } }
-        ]),
-        () => startGesture('左右摇头', [
-          { time: 0, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
-          { time: 260, values: { ParamAngleZ: -22, ParamBodyAngleZ: -7 } },
-          { time: 560, values: { ParamAngleZ: 20, ParamBodyAngleZ: 6 } },
-          { time: 860, values: { ParamAngleZ: -12, ParamBodyAngleZ: -4 } },
-          { time: 1200, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } }
-        ]),
-        () => startGesture('双耳抖动', [
-          { time: 0, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
-          { time: 70, values: { ear_left: 28, ear_right: 28, ParamAngleZ: 6 } },
-          { time: 140, values: { ear_left: -26, ear_right: -26, ParamAngleZ: -6 } },
-          { time: 210, values: { ear_left: 22, ear_right: 22, ParamAngleZ: 4 } },
-          { time: 280, values: { ear_left: -18, ear_right: -18, ParamAngleZ: -4 } },
-          { time: 360, values: { ear_left: 12, ear_right: 12, ParamAngleZ: 2 } },
-          { time: 450, values: { ear_left: -7, ear_right: -7, ParamAngleZ: 0 } },
-          { time: 620, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
-        ])
-      ];
-
-      gestures[Math.floor(Math.random() * gestures.length)]();
+      const names = Object.keys(gesturePresets);
+      playGesture(names[Math.floor(Math.random() * names.length)]);
     }
 
     function updateGesture() {
@@ -768,6 +781,20 @@
       });
     }
 
+    function startGestureCommandListener() {
+      if (removeGestureCommandListener) return;
+      const timer = setInterval(async () => {
+        try {
+          const response = await fetch('http://localhost:1234/gesture');
+          const data = await response.json();
+          if (data.gesture) playGesture(data.gesture);
+        } catch (error) {
+          // The bridge server may still be starting; keep polling quietly.
+        }
+      }, 200);
+      removeGestureCommandListener = () => clearInterval(timer);
+    }
+
     async function initLive2D() {
       try {
         setStatus('初始化 PIXI...');
@@ -802,6 +829,7 @@
         model.internalModel.on('beforeModelUpdate', updateGesture);
         startCursorTracking();
         startPetClickListener();
+        startGestureCommandListener();
 
         setStatus('在线');
         console.log('[Inni] 模型加载成功');

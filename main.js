@@ -59,8 +59,8 @@ function createWindow() {
     startCursorTracking();
   });
 
-  mainWindow.webContents.on('console-message', (event, level, message) => {
-    console.log(message);
+  mainWindow.webContents.on('console-message', (event, details) => {
+    console.log(details.message);
   });
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
