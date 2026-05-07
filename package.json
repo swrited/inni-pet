@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node start-all.js",
     "start:openclaw": "INNI_CHAT_PROVIDER=openclaw INNI_OPENCLAW_BASE_URL=http://127.0.0.1:28789/v1 node start-all.js",
-    "start:hermes": "INNI_CHAT_PROVIDER=hermes INNI_CHAT_BASE_URL=http://127.0.0.1:8000/v1 node start-all.js",
+    "start:hermes": "INNI_CHAT_PROVIDER=hermes node start-all.js",
     "start:npm": "npm start --foreground-scripts",
     "start:app": "npx electron .",
     "start:bridge": "node bridge-server.js",

@@ -2,6 +2,8 @@
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
+const path = require('path');
+const { spawn } = require('child_process');
 
 const INNI_SYSTEM_PROMPT = '你是一个可爱的桌面宠物助手，名叫 Inni。回复要简短自然，像朋友聊天一样，通常1-3句话就好，不要啰嗦。语气轻松随意，可以适当用一些语气词。';
 const DEFAULT_CHAT_PROVIDER = (process.env.INNI_CHAT_PROVIDER || process.env.CHAT_PROVIDER || 'minimax').toLowerCase();
@@ -12,6 +14,11 @@ const OPENAI_COMPAT_BASE_URL = process.env.INNI_CHAT_BASE_URL || process.env.OPE
 const OPENAI_COMPAT_API_KEY = process.env.INNI_CHAT_API_KEY || process.env.OPENAI_API_KEY || 'not-needed';
 const OPENAI_COMPAT_MODEL = process.env.INNI_CHAT_MODEL || process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
 const OPENCLAW_SESSION_ID = process.env.INNI_OPENCLAW_SESSION_ID || 'inni-pet';
+const HERMES_SOURCE_HOME = process.env.HERMES_SOURCE_HOME || path.join(os.homedir(), '.hermes');
+const HERMES_HOME = process.env.INNI_HERMES_HOME || process.env.HERMES_INNI_HOME || path.join(os.homedir(), '.hermes-inni');
+const HERMES_PROJECT = process.env.HERMES_PROJECT || path.join(os.homedir(), 'hermes-agent');
+const HERMES_PYTHON = process.env.HERMES_PYTHON || path.join(HERMES_PROJECT, 'venv', 'bin', 'python');
+const HERMES_TIMEOUT_MS = Number(process.env.INNI_HERMES_TIMEOUT_MS || 90000);
 const gestureQueue = [];
 
 const log = (msg) => console.log(msg);
@@ -111,6 +118,50 @@ function openClawConfig() {
   return { config: {}, filePath: null };
 }
 
+function stripYamlBlock(text, key) {
+  const lines = text.split(/\r?\n/);
+  const result = [];
+  let skipping = false;
+  const header = `${key}:`;
+
+  for (const line of lines) {
+    if (!skipping && line === header) {
+      skipping = true;
+      continue;
+    }
+
+    if (skipping) {
+      const startsRootKey = line && !line.startsWith(' ') && !line.startsWith('\t') && /^[A-Za-z0-9_-]+:/.test(line);
+      if (!startsRootKey) continue;
+      skipping = false;
+    }
+
+    result.push(line);
+  }
+
+  return result.join('\n');
+}
+
+function ensureHermesHome() {
+  fs.mkdirSync(HERMES_HOME, { recursive: true });
+
+  const sourceConfig = path.join(HERMES_SOURCE_HOME, 'config.yaml');
+  const targetConfig = path.join(HERMES_HOME, 'config.yaml');
+  if (fs.existsSync(sourceConfig)) {
+    let configText = fs.readFileSync(sourceConfig, 'utf8');
+    configText = stripYamlBlock(configText, 'mcp_servers');
+    fs.writeFileSync(targetConfig, configText);
+  }
+
+  for (const name of ['.env', 'auth.json', 'SOUL.md']) {
+    const source = path.join(HERMES_SOURCE_HOME, name);
+    const target = path.join(HERMES_HOME, name);
+    if (fs.existsSync(source)) {
+      fs.copyFileSync(source, target);
+    }
+  }
+}
+
 function openClawConnection() {
   const { config } = openClawConfig();
   const port = process.env.INNI_OPENCLAW_PORT || config.gateway?.port || 28789;
@@ -172,6 +223,68 @@ async function chatWithOpenClaw(payload) {
   });
 }
 
+function runHermesCli(query) {
+  ensureHermesHome();
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(HERMES_PYTHON, [
+      '-m', 'hermes_cli.main',
+      'chat',
+      '-q', query,
+      '-Q',
+      '--max-turns', String(process.env.INNI_HERMES_MAX_TURNS || 3),
+      '--source', 'inni-pet'
+    ], {
+      cwd: HERMES_PROJECT,
+      env: {
+        ...process.env,
+        HERMES_HOME,
+        HERMES_SESSION_SOURCE: 'inni-pet'
+      },
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    let stdout = '';
+    let stderr = '';
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      reject(new Error(`Hermes CLI timed out after ${HERMES_TIMEOUT_MS}ms`));
+    }, HERMES_TIMEOUT_MS);
+
+    child.stdout.on('data', chunk => stdout += chunk.toString());
+    child.stderr.on('data', chunk => stderr += chunk.toString());
+    child.on('error', err => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('exit', code => {
+      clearTimeout(timer);
+      if (code !== 0) {
+        reject(new Error((stderr || stdout || `Hermes CLI exited with code ${code}`).trim()));
+        return;
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+async function chatWithHermes(payload) {
+  const userMessage = lastUserMessage(payload.messages);
+  const query = `${INNI_SYSTEM_PROMPT}\n\n用户：${userMessage}`;
+  const output = await runHermesCli(query);
+  const reply = output
+    .split(/\r?\n/)
+    .filter(line => line.trim() && !line.startsWith('session_id:') && !line.startsWith('[mcp-bridge]'))
+    .join('\n')
+    .trim();
+
+  if (!reply) {
+    throw new Error(`Hermes CLI response was empty: ${output.slice(0, 500)}`);
+  }
+
+  return chatCompletion(reply, 'hermes-cli');
+}
+
 function selectedProvider(payload = {}) {
   return String(payload.gateway || payload.provider || payload.inni_provider || DEFAULT_CHAT_PROVIDER).toLowerCase();
 }
@@ -179,7 +292,8 @@ function selectedProvider(payload = {}) {
 async function chat(payload) {
   const provider = selectedProvider(payload);
   if (provider === 'openclaw') return chatWithOpenClaw(payload);
-  if (provider === 'hermes' || provider === 'openai' || provider === 'compatible') {
+  if (provider === 'hermes') return chatWithHermes(payload);
+  if (provider === 'openai' || provider === 'compatible') {
     return chatWithOpenAICompatible(payload);
   }
   return chatWithMiniMax(payload);
@@ -241,7 +355,7 @@ function createHandler(port) {
         available: [
           { id: 'minimax', label: 'MiniMax', baseUrl: MINIMAX_BASE_URL },
           { id: 'openclaw', label: 'OpenClaw', baseUrl: openclaw.baseUrl },
-          { id: 'hermes', label: 'Hermes', baseUrl: OPENAI_COMPAT_BASE_URL }
+          { id: 'hermes', label: 'Hermes', baseUrl: `cli:${HERMES_HOME}` }
         ]
       });
       return;
