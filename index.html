@@ -307,17 +307,23 @@
       const gestures = [
         () => startGesture('左耳抖动', [
           { time: 0, values: { ear_left: 0, ear_right: 0 } },
-          { time: 120, values: { ear_left: 2.4, ear_right: 0.25 } },
-          { time: 260, values: { ear_left: -1.4, ear_right: 0 } },
-          { time: 420, values: { ear_left: 2.0, ear_right: 0.2 } },
-          { time: 700, values: { ear_left: 0, ear_right: 0 } }
+          { time: 70, values: { ear_left: 2.6, ear_right: 0.15 } },
+          { time: 140, values: { ear_left: -2.4, ear_right: -0.1 } },
+          { time: 210, values: { ear_left: 2.1, ear_right: 0.12 } },
+          { time: 280, values: { ear_left: -1.8, ear_right: -0.08 } },
+          { time: 360, values: { ear_left: 1.3, ear_right: 0.06 } },
+          { time: 450, values: { ear_left: -0.8, ear_right: 0 } },
+          { time: 600, values: { ear_left: 0, ear_right: 0 } }
         ]),
         () => startGesture('右耳抖动', [
           { time: 0, values: { ear_left: 0, ear_right: 0 } },
-          { time: 120, values: { ear_left: 0.25, ear_right: 2.4 } },
-          { time: 260, values: { ear_left: 0, ear_right: -1.4 } },
-          { time: 420, values: { ear_left: 0.2, ear_right: 2.0 } },
-          { time: 700, values: { ear_left: 0, ear_right: 0 } }
+          { time: 70, values: { ear_left: 0.15, ear_right: 2.6 } },
+          { time: 140, values: { ear_left: -0.1, ear_right: -2.4 } },
+          { time: 210, values: { ear_left: 0.12, ear_right: 2.1 } },
+          { time: 280, values: { ear_left: -0.08, ear_right: -1.8 } },
+          { time: 360, values: { ear_left: 0.06, ear_right: 1.3 } },
+          { time: 450, values: { ear_left: 0, ear_right: -0.8 } },
+          { time: 600, values: { ear_left: 0, ear_right: 0 } }
         ]),
         () => startGesture('左右摇头', [
           { time: 0, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
@@ -328,10 +334,13 @@
         ]),
         () => startGesture('双耳抖动', [
           { time: 0, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
-          { time: 130, values: { ear_left: 2.0, ear_right: 2.0, ParamAngleZ: 10 } },
-          { time: 290, values: { ear_left: -1.1, ear_right: -1.1, ParamAngleZ: -10 } },
-          { time: 470, values: { ear_left: 1.8, ear_right: 1.8, ParamAngleZ: 7 } },
-          { time: 760, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
+          { time: 70, values: { ear_left: 2.3, ear_right: 2.3, ParamAngleZ: 6 } },
+          { time: 140, values: { ear_left: -2.1, ear_right: -2.1, ParamAngleZ: -6 } },
+          { time: 210, values: { ear_left: 1.8, ear_right: 1.8, ParamAngleZ: 4 } },
+          { time: 280, values: { ear_left: -1.5, ear_right: -1.5, ParamAngleZ: -4 } },
+          { time: 360, values: { ear_left: 1.0, ear_right: 1.0, ParamAngleZ: 2 } },
+          { time: 450, values: { ear_left: -0.6, ear_right: -0.6, ParamAngleZ: 0 } },
+          { time: 600, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
         ])
       ];
 
