@@ -12,5 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = (event, payload) => callback(payload);
     ipcRenderer.on('cursor-position', listener);
     return () => ipcRenderer.removeListener('cursor-position', listener);
+  },
+  onPetClick: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('pet-click', listener);
+    return () => ipcRenderer.removeListener('pet-click', listener);
   }
 });

@@ -59,6 +59,12 @@ function createWindow() {
     startCursorTracking();
   });
 
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'mouseDown' && input.button === 'left') {
+      mainWindow?.webContents.send('pet-click');
+    }
+  });
+
   mainWindow.on('closed', () => {
     stopCursorTracking();
     mainWindow = null;
