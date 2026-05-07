@@ -649,6 +649,12 @@
         { time: 2250, values: { ParamAngleZ: -10 } },
         { time: 3000, values: { ParamAngleZ: 10 } },
         { time: 3750, values: { ParamAngleZ: 0 } }
+      ], source),
+      sleep: (source) => startGesture('闭眼休息', [
+        { time: 0,    values: { ParamEyeLOpen: 1, ParamEyeROpen: 1 } },
+        { time: 300,  values: { ParamEyeLOpen: 0, ParamEyeROpen: 0 } },
+        { time: 2700, values: { ParamEyeLOpen: 0, ParamEyeROpen: 0 } },
+        { time: 3000, values: { ParamEyeLOpen: 1, ParamEyeROpen: 1 } }
       ], source)
     };
 
