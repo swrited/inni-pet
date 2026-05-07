@@ -5,7 +5,9 @@
   "description": "Inni Desktop Pet with Live2D",
   "main": "main.js",
   "scripts": {
-    "start": "npx electron ."
+    "start": "node start-all.js",
+    "start:app": "npx electron .",
+    "start:bridge": "node bridge-server.js"
   },
   "devDependencies": {
     "electron": "^41.0.3"
