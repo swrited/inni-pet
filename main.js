@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, screen, systemPreferences } = require('electron');
 const path = require('path');
 
+app.commandLine.appendSwitch('log-level', '3');
+
 let mainWindow = null;
 let cursorTrackingTimer = null;
 
