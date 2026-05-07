@@ -653,6 +653,14 @@
         const rawStageY = 600 - (pageY - rect.top) * (600 / rect.height);
         const stageY = 300 + (rawStageY - 300) * 2.2;
         model.focus(stageX, stageY);
+
+        const lookY = Math.max(-1, Math.min(1, (stageY - 300) / 180));
+        const coreModel = model.internalModel?.coreModel;
+        if (coreModel) {
+          coreModel.setParameterValueById('ParamAngleY', lookY * 30);
+          coreModel.setParameterValueById('ParamEyeBallY', lookY);
+          coreModel.setParameterValueById('ParamBodyAngleY', lookY * 8);
+        }
       });
     }
 
