@@ -325,6 +325,29 @@
     }
     #debug-toggle-btn:hover { background: rgba(255,77,141,0.3); }
 
+    /* 对话面板重新打开按钮 */
+    #chat-reopen-btn {
+      position: fixed;
+      right: 10px;
+      bottom: 10px;
+      width: 34px;
+      height: 34px;
+      background: rgba(255,77,141,0.3);
+      border: 1px solid rgba(255,77,141,0.4);
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 15px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 997;
+      -webkit-app-region: no-drag;
+      transition: background 0.2s, transform 0.15s;
+      color: rgba(255,255,255,0.85);
+    }
+    #chat-reopen-btn.visible { display: flex; }
+    #chat-reopen-btn:hover { background: rgba(255,77,141,0.5); transform: scale(1.1); }
+
     /* 独立调试窗口 */
     #debug-window {
       position: fixed;
@@ -479,6 +502,16 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+        <div class="setting-item">
+          <div>
+            <span class="setting-label">连续摇摆</span>
+            <span class="setting-hint">开启后 Inni 一直跟随节奏摇摆，不会自动做其他动作</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="sway-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -488,6 +521,9 @@
 
     <!-- 调试切换按钮 -->
     <button id="debug-toggle-btn" title="调试面板">🔧</button>
+
+    <!-- 对话面板重新打开按钮 -->
+    <button id="chat-reopen-btn" title="打开对话面板">💬</button>
 
     <!-- 调试窗口（独立） -->
     <div id="debug-window">
@@ -569,6 +605,16 @@
     let removePetClickListener = null;
     let removeGestureCommandListener = null;
     let currentGesture = null;
+    let idleGestureTimer = null;
+    let idleEnabled = true;
+    let continuousSwayEnabled = false;
+    let blinkState = 'open';      // 'open' | 'closing' | 'opening'
+    let blinkStartTime = 0;
+    let nextBlinkAt = 0;
+    const BLINK_CLOSE_MS = 75;
+    const BLINK_OPEN_MS = 75;
+    const BLINK_INTERVAL_MIN = 2000;
+    const BLINK_INTERVAL_MAX = 5000;
 
     function easeOutBack(t) {
       const c1 = 1.70158;
@@ -584,8 +630,9 @@
       model?.internalModel?.coreModel?.setParameterValueById(id, value);
     }
 
-    function startGesture(name, keyframes) {
-      console.log(`[Inni] 触发特殊动作: ${name}`);
+    function startGesture(name, keyframes, source = 'manual') {
+      const prefix = source === 'auto' ? '自动动作' : '手动触发';
+      console.log(`[Inni] ${prefix}: ${name}`);
       currentGesture = {
         name,
         keyframes,
@@ -595,59 +642,32 @@
     }
 
     const gesturePresets = {
-      left: () => startGesture('左耳抖动', [
-        { time: 0, values: { ear_left: 0, ear_right: 0 } },
-        { time: 140, values: { ear_left: -30, ear_right: 0 } },
-        { time: 300, values: { ear_left: 30, ear_right: 0 } },
-        { time: 460, values: { ear_left: -30, ear_right: 0 } },
-        { time: 620, values: { ear_left: 30, ear_right: 0 } },
-        { time: 820, values: { ear_left: 0, ear_right: 0 } },
-        { time: 980, values: { ear_left: 0, ear_right: 0 } }
-      ]),
-      right: () => startGesture('右耳抖动', [
-        { time: 0, values: { ear_left: 0, ear_right: 0 } },
-        { time: 140, values: { ear_left: 0, ear_right: -30 } },
-        { time: 300, values: { ear_left: 0, ear_right: 30 } },
-        { time: 460, values: { ear_left: 0, ear_right: -30 } },
-        { time: 620, values: { ear_left: 0, ear_right: 30 } },
-        { time: 820, values: { ear_left: 0, ear_right: 0 } },
-        { time: 980, values: { ear_left: 0, ear_right: 0 } }
-      ]),
-      shake: () => startGesture('随节奏摇摆', [
-        { time: 0,    values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
-        { time: 750,  values: { ParamAngleZ: -14, ParamBodyAngleZ: -5 } },
-        { time: 1500, values: { ParamAngleZ: 14, ParamBodyAngleZ: 5 } },
-        { time: 2250, values: { ParamAngleZ: -10, ParamBodyAngleZ: -3 } },
-        { time: 3000, values: { ParamAngleZ: 10, ParamBodyAngleZ: 3 } },
-        { time: 3750, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } }
-      ]),
-      ears: () => startGesture('双耳抖动', [
-        { time: 0, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
-        { time: 140, values: { ear_left: 30, ear_right: 30, ParamAngleZ: 6 } },
-        { time: 300, values: { ear_left: -30, ear_right: -30, ParamAngleZ: -6 } },
-        { time: 460, values: { ear_left: 30, ear_right: 30, ParamAngleZ: 4 } },
-        { time: 620, values: { ear_left: -30, ear_right: -30, ParamAngleZ: -4 } },
-        { time: 820, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
-        { time: 980, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
-      ])
+      shake: (source) => startGesture('随节奏摇摆', [
+        { time: 0,    values: { ParamAngleZ: 0 } },
+        { time: 750,  values: { ParamAngleZ: -14 } },
+        { time: 1500, values: { ParamAngleZ: 14 } },
+        { time: 2250, values: { ParamAngleZ: -10 } },
+        { time: 3000, values: { ParamAngleZ: 10 } },
+        { time: 3750, values: { ParamAngleZ: 0 } }
+      ], source)
     };
 
-    function playGesture(name) {
+    function playGesture(name, source = 'manual') {
       if (currentGesture) return;
-      if (name === 'random') return playRandomGesture();
+      if (name === 'random') return playRandomGesture(source);
 
       const preset = gesturePresets[name];
       if (!preset) {
         console.log(`[Inni] 未知动作: ${name}`);
         return;
       }
-      preset();
+      preset(source);
     }
 
-    function playRandomGesture() {
+    function playRandomGesture(source = 'manual') {
       if (currentGesture) return;
       const names = Object.keys(gesturePresets);
-      playGesture(names[Math.floor(Math.random() * names.length)]);
+      playGesture(names[Math.floor(Math.random() * names.length)], source);
     }
 
     function updateGesture() {
@@ -658,6 +678,10 @@
             applyModelParam(id, value);
           }
           currentGesture = null;
+          // 连续摇摆模式：动作结束后立即重新开始
+          if (continuousSwayEnabled) {
+            gesturePresets.shake('auto');
+          }
         } else {
           let from = currentGesture.keyframes[0];
           let to = currentGesture.keyframes[currentGesture.keyframes.length - 1];
@@ -674,7 +698,7 @@
           for (const id of ids) {
             const start = from.values[id] ?? 0;
             const end = to.values[id] ?? 0;
-            applyModelParam(id, start + (end - start) * easeOutBack(t));
+            applyModelParam(id, start + (end - start) * t);
           }
         }
       } else {
@@ -682,6 +706,50 @@
         if (model) {
           applyModelParam('ear_left', parseInt(earLeftSlider?.value || 0));
           applyModelParam('ear_right', parseInt(earRightSlider?.value || 0));
+          updateBlink();
+        }
+      }
+    }
+
+    function updateBlink() {
+      const now = performance.now();
+      if (nextBlinkAt === 0) {
+        nextBlinkAt = now + BLINK_INTERVAL_MIN + Math.random() * (BLINK_INTERVAL_MAX - BLINK_INTERVAL_MIN);
+        return;
+      }
+
+      if (blinkState === 'open') {
+        applyModelParam('ParamEyeLOpen', 1);
+        applyModelParam('ParamEyeROpen', 1);
+        if (now >= nextBlinkAt) {
+          blinkState = 'closing';
+          blinkStartTime = now;
+        }
+      } else if (blinkState === 'closing') {
+        const elapsed = now - blinkStartTime;
+        if (elapsed >= BLINK_CLOSE_MS) {
+          applyModelParam('ParamEyeLOpen', 0);
+          applyModelParam('ParamEyeROpen', 0);
+          blinkState = 'opening';
+          blinkStartTime = now;
+        } else {
+          const t = elapsed / BLINK_CLOSE_MS;
+          const v = 1 - easeOutBack(t);
+          applyModelParam('ParamEyeLOpen', v);
+          applyModelParam('ParamEyeROpen', v);
+        }
+      } else if (blinkState === 'opening') {
+        const elapsed = now - blinkStartTime;
+        if (elapsed >= BLINK_OPEN_MS) {
+          applyModelParam('ParamEyeLOpen', 1);
+          applyModelParam('ParamEyeROpen', 1);
+          blinkState = 'open';
+          nextBlinkAt = now + BLINK_INTERVAL_MIN + Math.random() * (BLINK_INTERVAL_MAX - BLINK_INTERVAL_MIN);
+        } else {
+          const t = elapsed / BLINK_OPEN_MS;
+          const v = easeOutBack(t);
+          applyModelParam('ParamEyeLOpen', v);
+          applyModelParam('ParamEyeROpen', v);
         }
       }
     }
@@ -808,6 +876,19 @@
       console.log('[TTS] 语音输出:', ttsEnabled ? '开启' : '关闭');
       if (!ttsEnabled) {
         stopCurrentAudio();
+      }
+    });
+
+    // ========== 设置：连续摇摆开关 ==========
+    const swayToggle = document.getElementById('sway-toggle');
+    swayToggle.addEventListener('change', () => {
+      continuousSwayEnabled = swayToggle.checked;
+      console.log('[Inni] 连续摇摆:', continuousSwayEnabled ? '开启' : '关闭');
+      if (continuousSwayEnabled) {
+        // 立即开始摇摆
+        if (!currentGesture) {
+          gesturePresets.shake('auto');
+        }
       }
     });
 
@@ -1150,9 +1231,16 @@
       }
     });
 
-    // 关闭输入框
+    // 关闭/打开输入框
     document.getElementById('input-panel-close').addEventListener('click', () => {
       document.getElementById('chat-container').style.display = 'none';
+      document.getElementById('chat-reopen-btn').classList.add('visible');
+    });
+
+    document.getElementById('chat-reopen-btn').addEventListener('click', () => {
+      document.getElementById('chat-container').style.display = '';
+      document.getElementById('chat-reopen-btn').classList.remove('visible');
+      setTimeout(() => chatInput.focus(), 100);
     });
 
     // 初始化 Live2D
@@ -1178,7 +1266,7 @@
       removePetClickListener = window.electronAPI.onPetClick(() => {
         const active = document.activeElement;
         if (active === chatInput) return;
-        playRandomGesture();
+        playRandomGesture('manual');
       });
     }
 
@@ -1188,7 +1276,7 @@
         try {
           const response = await fetch('http://localhost:1234/gesture');
           const data = await response.json();
-          if (data.gesture) playGesture(data.gesture);
+          if (data.gesture) playGesture(data.gesture, 'manual');
         } catch (error) {
           // The bridge server may still be starting; keep polling quietly.
         }
@@ -1196,27 +1284,46 @@
       removeGestureCommandListener = () => clearInterval(timer);
     }
 
+    function startIdleGestures() {
+      stopIdleGestures();
+      idleGestureTimer = setTimeout(() => {
+        if (idleEnabled && !isListening && !currentGesture && !continuousSwayEnabled) {
+          playRandomGesture('auto');
+        }
+        startIdleGestures();
+      }, 8000 + Math.random() * 12000);
+    }
+
+    function stopIdleGestures() {
+      if (idleGestureTimer) {
+        clearTimeout(idleGestureTimer);
+        idleGestureTimer = null;
+      }
+    }
+
     async function initLive2D() {
       try {
         setStatus('初始化 PIXI...');
         pixiApp = new PIXI.Application({
-          view: canvas,
           width: 400,
           height: 600,
           transparent: true,
-          backgroundColor: 0x000000,
-          backgroundAlpha: 0,
           antialias: true,
           resolution: window.devicePixelRatio || 1,
           autoDensity: true
         });
+
+        // 用 Pixi 创建的 canvas 替换原有的 placeholder canvas
+        const pixiCanvas = pixiApp.view;
+        pixiCanvas.id = 'live2d-canvas';
+        canvas.replaceWith(pixiCanvas);
 
         const Live2DModel = PIXI.live2d.Live2DModel;
         Live2DModel.registerTicker(PIXI.Ticker);
         PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR;
 
         setStatus('加载模型中...');
-        model = await Live2DModel.from('./inni_model/inni_2.model3.json', {
+        model = await Live2DModel.from('./inni_model/inni_2_eye.model3.json', {
           autoFocus: false,
           autoHitTest: false
         });
@@ -1230,7 +1337,7 @@
         model.eventMode = 'static';
         model.interactive = true;
         model.cursor = 'pointer';
-        model.on('pointertap', playRandomGesture);
+        model.on('pointertap', () => playRandomGesture('manual'));
         model.internalModel.on('beforeModelUpdate', updateGesture);
 
         // 停掉模型自带的待机动画，防止覆盖耳朵等调试参数
@@ -1242,6 +1349,7 @@
         startCursorTracking();
         startPetClickListener();
         startGestureCommandListener();
+        startIdleGestures();
 
         setStatus('在线');
         console.log('[Inni] 模型加载成功');

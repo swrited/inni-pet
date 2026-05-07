@@ -2,6 +2,16 @@
 	"Version": 3,
 	"Parameters": [
 		{
+			"Id": "ear_left",
+			"GroupId": "ParamGroup7",
+			"Name": "左耳朵"
+		},
+		{
+			"Id": "ear_right",
+			"GroupId": "ParamGroup7",
+			"Name": "右耳朵"
+		},
+		{
 			"Id": "ParamAngleX",
 			"GroupId": "ParamGroup",
 			"Name": "角度 X"
@@ -135,19 +145,14 @@
 			"Id": "ParamBreath",
 			"GroupId": "ParamGroup6",
 			"Name": "呼吸"
-		},
-		{
-			"Id": "ear_right",
-			"GroupId": "ParamGroup7",
-			"Name": "右耳朵"
-		},
-		{
-			"Id": "ear_left",
-			"GroupId": "",
-			"Name": "左耳朵"
 		}
 	],
 	"ParameterGroups": [
+		{
+			"Id": "ParamGroup7",
+			"GroupId": "",
+			"Name": "耳朵"
+		},
 		{
 			"Id": "ParamGroup",
 			"GroupId": "",
@@ -177,11 +182,6 @@
 			"Id": "ParamGroup6",
 			"GroupId": "",
 			"Name": "身体"
-		},
-		{
-			"Id": "ParamGroup7",
-			"GroupId": "",
-			"Name": "耳朵"
 		}
 	],
 	"Parts": [
