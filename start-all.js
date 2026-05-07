@@ -9,7 +9,7 @@ const children = [];
 function start(name, command, args) {
   const child = spawn(command, args, {
     cwd: root,
-    stdio: 'inherit',
+    stdio: ['ignore', 'inherit', 'inherit'],
     env: process.env
   });
 

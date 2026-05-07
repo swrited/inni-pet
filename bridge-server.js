@@ -175,5 +175,17 @@ function createHandler(port) {
 const server1 = createHandler(1234);
 const server2 = createHandler(11434);
 
-server1.listen(1234, '0.0.0.0', () => log('Server on http://0.0.0.0:1234 (Chat + TTS)'));
-server2.listen(11434, '0.0.0.0', () => log('Server on http://0.0.0.0:11434 (Chat + TTS)'));
+function listen(server, port) {
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      log(`Port ${port} is already in use; using the existing bridge if it is running.`);
+      return;
+    }
+    throw error;
+  });
+
+  server.listen(port, '0.0.0.0', () => log(`Server on http://0.0.0.0:${port} (Chat + TTS)`));
+}
+
+listen(server1, 1234);
+listen(server2, 11434);

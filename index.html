@@ -14,6 +14,15 @@
       -webkit-app-region: drag;
     }
     #app { width: 100%; height: 100%; position: relative; }
+    #drag-handle {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 34px;
+      z-index: 1200;
+      -webkit-app-region: drag;
+    }
 
     /* Live2D 画布区域 */
     #live2d-container {
@@ -227,6 +236,7 @@
 </head>
 <body>
   <div id="app">
+    <div id="drag-handle"></div>
     <div id="live2d-container">
       <canvas id="live2d-canvas"></canvas>
       <div id="subtitle"></div>
