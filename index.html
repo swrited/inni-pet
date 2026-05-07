@@ -610,12 +610,13 @@
         { time: 820, values: { ear_left: 0, ear_right: 0 } },
         { time: 980, values: { ear_left: 0, ear_right: 0 } }
       ]),
-      shake: () => startGesture('左右摇头', [
-        { time: 0, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
-        { time: 260, values: { ParamAngleZ: -22, ParamBodyAngleZ: -7 } },
-        { time: 560, values: { ParamAngleZ: 20, ParamBodyAngleZ: 6 } },
-        { time: 860, values: { ParamAngleZ: -12, ParamBodyAngleZ: -4 } },
-        { time: 1200, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } }
+      shake: () => startGesture('随节奏摇摆', [
+        { time: 0,    values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
+        { time: 750,  values: { ParamAngleZ: -14, ParamBodyAngleZ: -5 } },
+        { time: 1500, values: { ParamAngleZ: 14, ParamBodyAngleZ: 5 } },
+        { time: 2250, values: { ParamAngleZ: -10, ParamBodyAngleZ: -3 } },
+        { time: 3000, values: { ParamAngleZ: 10, ParamBodyAngleZ: 3 } },
+        { time: 3750, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } }
       ]),
       ears: () => startGesture('双耳抖动', [
         { time: 0, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
@@ -647,35 +648,38 @@
     }
 
     function updateGesture() {
-      if (!currentGesture) return;
-
-      const elapsed = performance.now() - currentGesture.startedAt;
-      if (elapsed >= currentGesture.duration) {
-        for (const [id, value] of Object.entries(currentGesture.keyframes[currentGesture.keyframes.length - 1].values)) {
-          applyModelParam(id, value);
+      if (currentGesture) {
+        const elapsed = performance.now() - currentGesture.startedAt;
+        if (elapsed >= currentGesture.duration) {
+          for (const [id, value] of Object.entries(currentGesture.keyframes[currentGesture.keyframes.length - 1].values)) {
+            applyModelParam(id, value);
+          }
+          currentGesture = null;
+        } else {
+          let from = currentGesture.keyframes[0];
+          let to = currentGesture.keyframes[currentGesture.keyframes.length - 1];
+          for (let i = 0; i < currentGesture.keyframes.length - 1; i++) {
+            if (elapsed >= currentGesture.keyframes[i].time && elapsed <= currentGesture.keyframes[i + 1].time) {
+              from = currentGesture.keyframes[i];
+              to = currentGesture.keyframes[i + 1];
+              break;
+            }
+          }
+          const span = Math.max(1, to.time - from.time);
+          const t = easeInOutSine(Math.max(0, Math.min(1, (elapsed - from.time) / span)));
+          const ids = new Set([...Object.keys(from.values), ...Object.keys(to.values)]);
+          for (const id of ids) {
+            const start = from.values[id] ?? 0;
+            const end = to.values[id] ?? 0;
+            applyModelParam(id, start + (end - start) * easeOutBack(t));
+          }
         }
-        currentGesture = null;
-        return;
-      }
-
-      let from = currentGesture.keyframes[0];
-      let to = currentGesture.keyframes[currentGesture.keyframes.length - 1];
-      for (let i = 0; i < currentGesture.keyframes.length - 1; i++) {
-        if (elapsed >= currentGesture.keyframes[i].time && elapsed <= currentGesture.keyframes[i + 1].time) {
-          from = currentGesture.keyframes[i];
-          to = currentGesture.keyframes[i + 1];
-          break;
+      } else {
+        // 无手势时：每帧强制写入调试滑块值，防止模型物理系统覆盖
+        if (model) {
+          applyModelParam('ear_left', parseInt(earLeftSlider?.value || 0));
+          applyModelParam('ear_right', parseInt(earRightSlider?.value || 0));
         }
-      }
-
-      const span = Math.max(1, to.time - from.time);
-      const t = easeInOutSine(Math.max(0, Math.min(1, (elapsed - from.time) / span)));
-      const ids = new Set([...Object.keys(from.values), ...Object.keys(to.values)]);
-
-      for (const id of ids) {
-        const start = from.values[id] ?? 0;
-        const end = to.values[id] ?? 0;
-        applyModelParam(id, start + (end - start) * easeOutBack(t));
       }
     }
 
@@ -1224,6 +1228,13 @@
         model.on('pointertap', playRandomGesture);
         canvas.addEventListener('click', playRandomGesture);
         model.internalModel.on('beforeModelUpdate', updateGesture);
+
+        // 停掉模型自带的待机动画，防止覆盖耳朵等调试参数
+        try {
+          model.internalModel.motionManager?.stopAllMotions?.();
+          model.internalModel.motionManager?.stopAllMotions?.();
+        } catch (e) {}
+
         startCursorTracking();
         startPetClickListener();
         startGestureCommandListener();
