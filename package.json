@@ -6,8 +6,10 @@
   "main": "main.js",
   "scripts": {
     "start": "node start-all.js",
+    "start:npm": "npm start --foreground-scripts",
     "start:app": "npx electron .",
-    "start:bridge": "node bridge-server.js"
+    "start:bridge": "node bridge-server.js",
+    "start:direct": "node start-all.js"
   },
   "devDependencies": {
     "electron": "^41.0.3"

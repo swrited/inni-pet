@@ -19,9 +19,26 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 34px;
-      z-index: 1200;
-      -webkit-app-region: drag;
+      height: 45px;
+      z-index: 2147483647;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 105, 180, 0.12);
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #drag-handle::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      width: 36px;
+      height: 3px;
+      background: rgba(255, 105, 180, 0.35);
+      border-radius: 2px;
+    }
+    #drag-handle:active {
+      cursor: grabbing;
     }
 
     /* Live2D 画布区域 */
@@ -429,7 +446,7 @@
               { role: 'system', content: '你是一个可爱的桌面宠物助手，名叫 Inni。回复要简短自然，像朋友聊天一样，通常1-3句话就好，不要啰嗦。语气轻松随意，可以适当用一些语气词。' },
               { role: 'user', content: message }
             ],
-            model: 'ana',
+            model: 'inni',
             stream: false
           })
         });
@@ -851,6 +868,28 @@
       }
     }
 
+    // 窗口拖拽功能
+    function setupWindowDrag() {
+      const dragHandle = document.getElementById('drag-handle');
+      if (!dragHandle) return;
+
+      dragHandle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        if (window.electronAPI?.startDrag) {
+          window.electronAPI.startDrag();
+          dragHandle.style.cursor = 'grabbing';
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (window.electronAPI?.stopDrag) {
+          window.electronAPI.stopDrag();
+        }
+        if (dragHandle) dragHandle.style.cursor = 'grab';
+      });
+    }
+
+    setupWindowDrag();
     window.addEventListener('load', initLive2D);
   </script>
 </body>

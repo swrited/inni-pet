@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ana 本地 ASR 服务 - faster-whisper"""
+"""Inni 本地 ASR 服务 - faster-whisper"""
 import base64
 import json
 import tempfile

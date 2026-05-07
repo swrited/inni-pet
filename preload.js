@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listen: () => ipcRenderer.send('listen'),
   setEmotion: (emotion) => ipcRenderer.send('setEmotion', emotion),
   hide: () => ipcRenderer.send('hide-window'),
+  startDrag: () => ipcRenderer.send('start-drag'),
+  stopDrag: () => ipcRenderer.send('stop-drag'),
   onSpeak: (callback) => ipcRenderer.on('speak', (event, text) => callback(text)),
   onListen: (callback) => ipcRenderer.on('listen', () => callback()),
   onSetEmotion: (callback) => ipcRenderer.on('setEmotion', (event, emotion) => callback(emotion)),

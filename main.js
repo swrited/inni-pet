@@ -5,6 +5,8 @@ app.commandLine.appendSwitch('log-level', '3');
 
 let mainWindow = null;
 let cursorTrackingTimer = null;
+let isDragging = false;
+let dragOffset = { x: 0, y: 0 };
 
 async function requestMicrophonePermission() {
   if (process.platform === 'darwin') {
@@ -89,8 +91,17 @@ function startCursorTracking() {
   cursorTrackingTimer = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
 
+    const cursor = screen.getCursorScreenPoint();
+
+    if (isDragging) {
+      // 拖拽模式：移动窗口
+      const newX = cursor.x - dragOffset.x;
+      const newY = cursor.y - dragOffset.y;
+      mainWindow.setPosition(Math.round(newX), Math.round(newY));
+    }
+
     mainWindow.webContents.send('cursor-position', {
-      cursor: screen.getCursorScreenPoint(),
+      cursor: cursor,
       windowBounds: mainWindow.getBounds()
     });
   }, 33);
@@ -116,4 +127,19 @@ app.on('window-all-closed', () => {
 // IPC
 ipcMain.on('hide-window', () => {
   mainWindow?.hide();
+});
+
+ipcMain.on('start-drag', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const cursor = screen.getCursorScreenPoint();
+  const bounds = mainWindow.getBounds();
+  dragOffset = {
+    x: cursor.x - bounds.x,
+    y: cursor.y - bounds.y
+  };
+  isDragging = true;
+});
+
+ipcMain.on('stop-drag', () => {
+  isDragging = false;
 });

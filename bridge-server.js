@@ -1,4 +1,4 @@
-// Ana Bridge Server - MiniMax Chat + TTS
+// Inni Bridge Server - MiniMax Chat + TTS
 const http = require('http');
 
 const MINIMAX_API_KEY = "sk-api-YYV9lvW4Eh1Y7yWUoI6h4J_yMNolXe0-IqL3cIqI1M_KiX1iO3ouRjMbYDvr8wpiBHrCWa7htpLJTmnAPpdMhAQSVupTr3f9WHoWWJWZA-7iKBjXrtmldJM";
@@ -77,7 +77,7 @@ function createHandler(port) {
             body: JSON.stringify({
               model: 'MiniMax-Text-01',
               messages: [
-                { role: 'system', content: '你是一个可爱的桌面宠物助手，名叫 Ana。回复要简短自然，像朋友聊天一样，通常1-3句话就好，不要啰嗦。语气轻松随意，可以适当用一些语气词。' },
+                { role: 'system', content: '你是一个可爱的桌面宠物助手，名叫 Inni。回复要简短自然，像朋友聊天一样，通常1-3句话就好，不要啰嗦。语气轻松随意，可以适当用一些语气词。' },
                 { role: 'user', content: userMessage }
               ]
             })
@@ -187,5 +187,19 @@ function listen(server, port) {
   server.listen(port, '0.0.0.0', () => log(`Server on http://0.0.0.0:${port} (Chat + TTS)`));
 }
 
+const servers = [server1, server2];
+
 listen(server1, 1234);
 listen(server2, 11434);
+
+// 优雅退出
+function gracefulShutdown(signal) {
+  log(`收到 ${signal}，正在关闭服务器...`);
+  for (const srv of servers) {
+    srv.close(() => log('服务器已关闭'));
+  }
+  process.exit(0);
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
