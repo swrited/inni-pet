@@ -305,21 +305,21 @@
     const gesturePresets = {
       left: () => startGesture('左耳抖动', [
         { time: 0, values: { ear_left: 0, ear_right: 0 } },
-        { time: 70, values: { ear_left: -30, ear_right: 0 } },
-        { time: 140, values: { ear_left: 30, ear_right: 0 } },
-        { time: 210, values: { ear_left: -30, ear_right: 0 } },
-        { time: 280, values: { ear_left: 30, ear_right: 0 } },
-        { time: 420, values: { ear_left: 0, ear_right: 0 } },
-        { time: 620, values: { ear_left: 0, ear_right: 0 } }
+        { time: 140, values: { ear_left: -30, ear_right: 0 } },
+        { time: 300, values: { ear_left: 30, ear_right: 0 } },
+        { time: 460, values: { ear_left: -30, ear_right: 0 } },
+        { time: 620, values: { ear_left: 30, ear_right: 0 } },
+        { time: 820, values: { ear_left: 0, ear_right: 0 } },
+        { time: 980, values: { ear_left: 0, ear_right: 0 } }
       ]),
       right: () => startGesture('右耳抖动', [
         { time: 0, values: { ear_left: 0, ear_right: 0 } },
-        { time: 70, values: { ear_left: 0, ear_right: -30 } },
-        { time: 140, values: { ear_left: 0, ear_right: 30 } },
-        { time: 210, values: { ear_left: 0, ear_right: -30 } },
-        { time: 280, values: { ear_left: 0, ear_right: 30 } },
-        { time: 420, values: { ear_left: 0, ear_right: 0 } },
-        { time: 620, values: { ear_left: 0, ear_right: 0 } }
+        { time: 140, values: { ear_left: 0, ear_right: -30 } },
+        { time: 300, values: { ear_left: 0, ear_right: 30 } },
+        { time: 460, values: { ear_left: 0, ear_right: -30 } },
+        { time: 620, values: { ear_left: 0, ear_right: 30 } },
+        { time: 820, values: { ear_left: 0, ear_right: 0 } },
+        { time: 980, values: { ear_left: 0, ear_right: 0 } }
       ]),
       shake: () => startGesture('左右摇头', [
         { time: 0, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
@@ -330,13 +330,12 @@
       ]),
       ears: () => startGesture('双耳抖动', [
         { time: 0, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
-        { time: 70, values: { ear_left: 28, ear_right: 28, ParamAngleZ: 6 } },
-        { time: 140, values: { ear_left: -26, ear_right: -26, ParamAngleZ: -6 } },
-        { time: 210, values: { ear_left: 22, ear_right: 22, ParamAngleZ: 4 } },
-        { time: 280, values: { ear_left: -18, ear_right: -18, ParamAngleZ: -4 } },
-        { time: 360, values: { ear_left: 12, ear_right: 12, ParamAngleZ: 2 } },
-        { time: 450, values: { ear_left: -7, ear_right: -7, ParamAngleZ: 0 } },
-        { time: 620, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
+        { time: 140, values: { ear_left: 30, ear_right: 30, ParamAngleZ: 6 } },
+        { time: 300, values: { ear_left: -30, ear_right: -30, ParamAngleZ: -6 } },
+        { time: 460, values: { ear_left: 30, ear_right: 30, ParamAngleZ: 4 } },
+        { time: 620, values: { ear_left: -30, ear_right: -30, ParamAngleZ: -4 } },
+        { time: 820, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
+        { time: 980, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
       ])
     };
 
