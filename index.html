@@ -139,10 +139,29 @@
       align-items: center;
       margin-bottom: 10px;
     }
-    #input-panel-title {
-      color: rgba(255,255,255,0.8);
-      font-size: 13px;
-      font-weight: 600;
+    #tab-bar {
+      display: flex;
+      gap: 4px;
+    }
+    .tab-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.45);
+      padding: 5px 14px;
+      border-radius: 16px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-app-region: no-drag;
+    }
+    .tab-btn.active {
+      background: rgba(255,77,141,0.25);
+      border-color: rgba(255,77,141,0.4);
+      color: rgba(255,255,255,0.9);
+    }
+    .tab-btn:hover:not(.active) {
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.7);
     }
     #input-panel-close {
       background: rgba(255,255,255,0.12);
@@ -158,6 +177,69 @@
       justify-content: center;
     }
     #input-panel-close:hover { background: rgba(255,255,255,0.25); }
+
+    /* Tab 内容区 */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* 设置面板 */
+    #settings-panel { padding: 4px 0; }
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .setting-item:last-child { border-bottom: none; }
+    .setting-label {
+      color: rgba(255,255,255,0.75);
+      font-size: 13px;
+    }
+    .setting-hint {
+      display: block;
+      color: rgba(255,255,255,0.35);
+      font-size: 10.5px;
+      margin-top: 2px;
+    }
+    /* Toggle 开关 */
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.15);
+      border-radius: 26px;
+      transition: 0.25s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.25s;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: linear-gradient(135deg, #ff4d8d, #e040fb);
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(18px);
+    }
+
     #input-panel-row {
       display: flex;
       gap: 8px;
@@ -263,13 +345,34 @@
     <!-- 输入框面板 -->
     <div id="chat-container">
       <div id="input-panel-header">
-        <span id="input-panel-title">💬 Inni</span>
+        <div id="tab-bar">
+          <button class="tab-btn active" data-tab="chat">对话</button>
+          <button class="tab-btn" data-tab="settings">设置</button>
+        </div>
         <button id="input-panel-close">✕</button>
       </div>
-      <div id="input-panel-row">
-        <input type="text" id="chat-input" placeholder="输入消息，按回车发送..." />
-        <button id="mic-btn" title="语音输入">🎤</button>
-        <button id="send-btn">➤</button>
+
+      <!-- 对话 Tab -->
+      <div id="chat-panel" class="tab-content active">
+        <div id="input-panel-row">
+          <input type="text" id="chat-input" placeholder="输入消息，按回车发送..." />
+          <button id="mic-btn" title="语音输入">🎤</button>
+          <button id="send-btn">➤</button>
+        </div>
+      </div>
+
+      <!-- 设置 Tab -->
+      <div id="settings-panel" class="tab-content">
+        <div class="setting-item">
+          <div>
+            <span class="setting-label">语音输出</span>
+            <span class="setting-hint">关闭后 Inni 不再朗读回复，节省 API 用量</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="tts-toggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -300,6 +403,7 @@
     const liveSubtitleInterim = liveSubtitle.querySelector('.interim');
     let subtitleTimer = null;
     let currentAudio = null; // 当前播放的音频
+    let ttsEnabled = true;   // 语音输出开关
     let removeCursorTracker = null;
     let removePetClickListener = null;
     let removeGestureCommandListener = null;
@@ -475,6 +579,17 @@
 
     // 语音播放
     function speak(text) {
+      // 检查 TTS 开关
+      if (!ttsEnabled) {
+        console.log('[TTS] 语音输出已关闭');
+        // 无语音时，字幕在几秒后自动消失
+        if (subtitleTimer) clearTimeout(subtitleTimer);
+        subtitleTimer = setTimeout(() => {
+          subtitle.classList.remove('visible');
+        }, 4000);
+        return;
+      }
+
       // 打断旧音频
       stopCurrentAudio();
 
@@ -501,6 +616,35 @@
           currentAudio = null;
         });
     }
+
+    // ========== Tab 切换 ==========
+    const tabBtns = document.querySelectorAll('#tab-bar .tab-btn');
+    const tabContents = document.querySelectorAll('#chat-container .tab-content');
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabName = btn.dataset.tab;
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        tabContents.forEach(p => p.classList.remove('active'));
+        document.getElementById(tabName + '-panel').classList.add('active');
+
+        // 切换到对话时自动聚焦输入框
+        if (tabName === 'chat') {
+          setTimeout(() => chatInput.focus(), 100);
+        }
+      });
+    });
+
+    // ========== 设置：TTS 开关 ==========
+    const ttsToggle = document.getElementById('tts-toggle');
+    ttsToggle.addEventListener('change', () => {
+      ttsEnabled = ttsToggle.checked;
+      console.log('[TTS] 语音输出:', ttsEnabled ? '开启' : '关闭');
+      if (!ttsEnabled) {
+        stopCurrentAudio();
+      }
+    });
 
     sendBtn.addEventListener('click', sendMessage);
     chatInput.addEventListener('keypress', (e) => {
