@@ -441,6 +441,31 @@
           </div>
         </div>
         <button class="btn-reset" id="btn-reset-ears">归零</button>
+
+        <!-- 模型位置 -->
+        <div class="slider-item" style="margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);">
+          <div class="slider-header">
+            <span class="slider-label">模型 X 位置</span>
+            <span class="slider-value" id="model-x-val">200</span>
+          </div>
+          <div class="slider-row">
+            <span style="color:rgba(255,255,255,0.3);font-size:11px;">50</span>
+            <input type="range" id="model-x-slider" min="50" max="350" value="200" step="1" />
+            <span style="color:rgba(255,255,255,0.3);font-size:11px;">350</span>
+          </div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span class="slider-label">模型 Y 位置</span>
+            <span class="slider-value" id="model-y-val">850</span>
+          </div>
+          <div class="slider-row">
+            <span style="color:rgba(255,255,255,0.3);font-size:11px;">500</span>
+            <input type="range" id="model-y-slider" min="500" max="1100" value="850" step="1" />
+            <span style="color:rgba(255,255,255,0.3);font-size:11px;">1100</span>
+          </div>
+        </div>
+        <button class="btn-reset" id="btn-reset-pos">复位</button>
       </div>
     </div>
 
@@ -740,6 +765,36 @@
       earRightVal.textContent = '0';
       updateEarDisplay('ear_left', 0);
       updateEarDisplay('ear_right', 0);
+    });
+
+    // ========== 调试：模型位置滑块 ==========
+    const modelXSlider = document.getElementById('model-x-slider');
+    const modelYSlider = document.getElementById('model-y-slider');
+    const modelXVal = document.getElementById('model-x-val');
+    const modelYVal = document.getElementById('model-y-val');
+
+    function updateModelPosition() {
+      if (!model) return;
+      const x = parseInt(modelXSlider.value);
+      const y = parseInt(modelYSlider.value);
+      model.position.set(x, y);
+    }
+
+    modelXSlider.addEventListener('input', () => {
+      modelXVal.textContent = modelXSlider.value;
+      updateModelPosition();
+    });
+    modelYSlider.addEventListener('input', () => {
+      modelYVal.textContent = modelYSlider.value;
+      updateModelPosition();
+    });
+
+    document.getElementById('btn-reset-pos').addEventListener('click', () => {
+      modelXSlider.value = 200;
+      modelYSlider.value = 850;
+      modelXVal.textContent = '200';
+      modelYVal.textContent = '850';
+      if (model) model.position.set(200, 850);
     });
 
     sendBtn.addEventListener('click', sendMessage);
