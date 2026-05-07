@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 
 const INNI_SYSTEM_PROMPT = '你是一个可爱的桌面宠物助手，名叫 Inni。回复要简短自然，像朋友聊天一样，通常1-3句话就好，不要啰嗦。语气轻松随意，可以适当用一些语气词。';
-const CHAT_PROVIDER = (process.env.INNI_CHAT_PROVIDER || process.env.CHAT_PROVIDER || 'minimax').toLowerCase();
+const DEFAULT_CHAT_PROVIDER = (process.env.INNI_CHAT_PROVIDER || process.env.CHAT_PROVIDER || 'minimax').toLowerCase();
 const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || "sk-api-YYV9lvW4Eh1Y7yWUoI6h4J_yMNolXe0-IqL3cIqI1M_KiX1iO3ouRjMbYDvr8wpiBHrCWa7htpLJTmnAPpdMhAQSVupTr3f9WHoWWJWZA-7iKBjXrtmldJM";
 const MINIMAX_BASE_URL = process.env.MINIMAX_BASE_URL || "https://api.minimax.chat/v1";
 const MINIMAX_CHAT_MODEL = process.env.MINIMAX_CHAT_MODEL || 'MiniMax-Text-01';
@@ -15,7 +15,7 @@ const OPENCLAW_SESSION_ID = process.env.INNI_OPENCLAW_SESSION_ID || 'inni-pet';
 const gestureQueue = [];
 
 const log = (msg) => console.log(msg);
-log(`[Bridge] chat provider=${CHAT_PROVIDER}`);
+log(`[Bridge] default chat provider=${DEFAULT_CHAT_PROVIDER}`);
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -127,7 +127,7 @@ async function chatWithOpenAICompatible(payload, options = {}) {
   const extraHeaders = options.headers || {};
   const upstreamPayload = {
     ...payload,
-    model: process.env.INNI_CHAT_MODEL || payload.model || model,
+    model: process.env.INNI_CHAT_MODEL || model || payload.model || OPENAI_COMPAT_MODEL,
     messages: normalizeMessages(payload.messages)
   };
   if (options.user && !upstreamPayload.user) {
@@ -172,9 +172,14 @@ async function chatWithOpenClaw(payload) {
   });
 }
 
+function selectedProvider(payload = {}) {
+  return String(payload.gateway || payload.provider || payload.inni_provider || DEFAULT_CHAT_PROVIDER).toLowerCase();
+}
+
 async function chat(payload) {
-  if (CHAT_PROVIDER === 'openclaw') return chatWithOpenClaw(payload);
-  if (CHAT_PROVIDER === 'hermes' || CHAT_PROVIDER === 'openai' || CHAT_PROVIDER === 'compatible') {
+  const provider = selectedProvider(payload);
+  if (provider === 'openclaw') return chatWithOpenClaw(payload);
+  if (provider === 'hermes' || provider === 'openai' || provider === 'compatible') {
     return chatWithOpenAICompatible(payload);
   }
   return chatWithMiniMax(payload);
@@ -220,7 +225,24 @@ function createHandler(port) {
     if (url === '/v1/models' || url === '/models' || url === '/api/tags') {
       sendJson(res, 200, {
         object: 'list',
-        data: [{ id: process.env.INNI_CHAT_MODEL || OPENAI_COMPAT_MODEL, object: 'model', created: 1677610602, owned_by: CHAT_PROVIDER }]
+        data: [
+          { id: 'minimax', object: 'model', created: 1677610602, owned_by: 'minimax' },
+          { id: 'openclaw', object: 'model', created: 1677610602, owned_by: 'openclaw' },
+          { id: 'hermes', object: 'model', created: 1677610602, owned_by: 'openai-compatible' }
+        ]
+      });
+      return;
+    }
+
+    if (url === '/gateway' && req.method === 'GET') {
+      const openclaw = openClawConnection();
+      sendJson(res, 200, {
+        default: DEFAULT_CHAT_PROVIDER,
+        available: [
+          { id: 'minimax', label: 'MiniMax', baseUrl: MINIMAX_BASE_URL },
+          { id: 'openclaw', label: 'OpenClaw', baseUrl: openclaw.baseUrl },
+          { id: 'hermes', label: 'Hermes', baseUrl: OPENAI_COMPAT_BASE_URL }
+        ]
       });
       return;
     }
@@ -230,12 +252,13 @@ function createHandler(port) {
       readBody(req).then(async body => {
         try {
           const payload = JSON.parse(body || '{}');
+          const provider = selectedProvider(payload);
           const userMessage = lastUserMessage(payload.messages);
-          log(`[${port}] Message: ${userMessage}`);
+          log(`[${port}:${provider}] Message: ${userMessage}`);
 
           const data = await chat(payload);
           const reply = data.choices?.[0]?.message?.content || '';
-          log(`[AI:${CHAT_PROVIDER}] ${reply}`);
+          log(`[AI:${provider}] ${reply}`);
           sendJson(res, 200, data);
         } catch (e) {
           log(`Error: ${e.message}`);

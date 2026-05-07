@@ -205,6 +205,35 @@
       font-size: 10.5px;
       margin-top: 2px;
     }
+    .setting-item.column {
+      display: block;
+    }
+    .gateway-select {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .gateway-btn {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.58);
+      height: 30px;
+      border-radius: 15px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      -webkit-app-region: no-drag;
+    }
+    .gateway-btn.active {
+      background: rgba(255,77,141,0.25);
+      border-color: rgba(255,77,141,0.48);
+      color: rgba(255,255,255,0.92);
+    }
+    .gateway-btn:hover:not(.active) {
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.78);
+    }
     /* Toggle 开关 */
     .toggle-switch {
       position: relative;
@@ -502,6 +531,17 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+        <div class="setting-item column">
+          <div>
+            <span class="setting-label">对话 Gateway</span>
+            <span class="setting-hint" id="gateway-hint">选择后下一条消息立即生效</span>
+          </div>
+          <div class="gateway-select" id="gateway-select">
+            <button class="gateway-btn" data-gateway="minimax">MiniMax</button>
+            <button class="gateway-btn" data-gateway="openclaw">OpenClaw</button>
+            <button class="gateway-btn" data-gateway="hermes">Hermes</button>
+          </div>
+        </div>
         <div class="setting-item">
           <div>
             <span class="setting-label">连续摇摆</span>
@@ -593,6 +633,8 @@
     const statusText = document.getElementById('status-text');
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
+    const gatewayButtons = document.querySelectorAll('.gateway-btn');
+    const gatewayHint = document.getElementById('gateway-hint');
     const canvas = document.getElementById('live2d-canvas');
     const subtitle = document.getElementById('subtitle');
     const liveSubtitle = document.getElementById('live-subtitle');
@@ -601,6 +643,8 @@
     let subtitleTimer = null;
     let currentAudio = null; // 当前播放的音频
     let ttsEnabled = true;   // 语音输出开关
+    const savedGateway = localStorage.getItem('inni-chat-gateway');
+    let currentGateway = savedGateway || 'minimax';
     let removeCursorTracker = null;
     let removePetClickListener = null;
     let removeGestureCommandListener = null;
@@ -765,6 +809,33 @@
       console.log('[Inni]', text);
     }
 
+    function gatewayLabel(gateway) {
+      return ({ minimax: 'MiniMax', openclaw: 'OpenClaw', hermes: 'Hermes' })[gateway] || gateway;
+    }
+
+    function setGateway(gateway) {
+      currentGateway = gateway;
+      localStorage.setItem('inni-chat-gateway', gateway);
+      gatewayButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.gateway === gateway);
+      });
+      if (gatewayHint) gatewayHint.textContent = `当前：${gatewayLabel(gateway)}，下一条消息立即生效`;
+      console.log('[Gateway] 当前对话后端:', gateway);
+    }
+
+    async function loadGatewayInfo() {
+      try {
+        const response = await fetch('http://localhost:1234/gateway');
+        const data = await response.json();
+        if (!savedGateway && data.default) {
+          setGateway(data.default);
+        }
+        console.log('[Gateway] 可用后端:', data.available || []);
+      } catch (error) {
+        console.log('[Gateway] 暂时无法读取后端列表，使用本地选择:', currentGateway);
+      }
+    }
+
     // 显示字幕
     function showSubtitle(text) {
       subtitle.textContent = text;
@@ -789,6 +860,7 @@
               { role: 'system', content: '你是一个可爱的桌面宠物助手，名叫 Inni。回复要简短自然，像朋友聊天一样，通常1-3句话就好，不要啰嗦。语气轻松随意，可以适当用一些语气词。' },
               { role: 'user', content: message }
             ],
+            gateway: currentGateway,
             model: 'inni',
             stream: false
           })
@@ -884,6 +956,13 @@
         stopCurrentAudio();
       }
     });
+
+    // ========== 设置：Gateway 选择 ==========
+    gatewayButtons.forEach(btn => {
+      btn.addEventListener('click', () => setGateway(btn.dataset.gateway));
+    });
+    setGateway(currentGateway);
+    loadGatewayInfo();
 
     // ========== 设置：连续摇摆开关 ==========
     const swayToggle = document.getElementById('sway-toggle');
