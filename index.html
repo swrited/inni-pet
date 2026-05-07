@@ -240,6 +240,67 @@
       transform: translateX(18px);
     }
 
+    /* 调试面板 - 滑块 */
+    .slider-item {
+      padding: 8px 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .slider-item:last-child { border-bottom: none; }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .slider-label {
+      color: rgba(255,255,255,0.75);
+      font-size: 12.5px;
+    }
+    .slider-value {
+      color: rgba(255,105,180,0.9);
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 30px;
+      text-align: right;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff4d8d, #e040fb);
+      cursor: pointer;
+      border: none;
+    }
+    .btn-reset {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.6);
+      padding: 6px 14px;
+      border-radius: 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .btn-reset:hover {
+      background: rgba(255,77,141,0.2);
+      color: rgba(255,255,255,0.9);
+    }
+
     #input-panel-row {
       display: flex;
       gap: 8px;
@@ -327,6 +388,7 @@
         <div id="tab-bar">
           <button class="tab-btn active" data-tab="chat">对话</button>
           <button class="tab-btn" data-tab="settings">设置</button>
+          <button class="tab-btn" data-tab="debug">调试</button>
         </div>
         <button id="input-panel-close">✕</button>
       </div>
@@ -352,6 +414,33 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+      </div>
+
+      <!-- 调试 Tab -->
+      <div id="debug-panel" class="tab-content">
+        <div class="slider-item">
+          <div class="slider-header">
+            <span class="slider-label">左耳 ear_left</span>
+            <span class="slider-value" id="ear-left-val">0</span>
+          </div>
+          <div class="slider-row">
+            <span style="color:rgba(255,255,255,0.3);font-size:11px;">-60</span>
+            <input type="range" id="ear-left-slider" min="-60" max="60" value="0" step="1" />
+            <span style="color:rgba(255,255,255,0.3);font-size:11px;">60</span>
+          </div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span class="slider-label">右耳 ear_right</span>
+            <span class="slider-value" id="ear-right-val">0</span>
+          </div>
+          <div class="slider-row">
+            <span style="color:rgba(255,255,255,0.3);font-size:11px;">-60</span>
+            <input type="range" id="ear-right-slider" min="-60" max="60" value="0" step="1" />
+            <span style="color:rgba(255,255,255,0.3);font-size:11px;">60</span>
+          </div>
+        </div>
+        <button class="btn-reset" id="btn-reset-ears">归零</button>
       </div>
     </div>
 
@@ -620,6 +709,37 @@
       if (!ttsEnabled) {
         stopCurrentAudio();
       }
+    });
+
+    // ========== 调试：耳朵滑块 ==========
+    const earLeftSlider = document.getElementById('ear-left-slider');
+    const earRightSlider = document.getElementById('ear-right-slider');
+    const earLeftVal = document.getElementById('ear-left-val');
+    const earRightVal = document.getElementById('ear-right-val');
+
+    function updateEarDisplay(id, value) {
+      applyModelParam(id, value);
+    }
+
+    earLeftSlider.addEventListener('input', () => {
+      const v = parseInt(earLeftSlider.value);
+      earLeftVal.textContent = v;
+      updateEarDisplay('ear_left', v);
+    });
+
+    earRightSlider.addEventListener('input', () => {
+      const v = parseInt(earRightSlider.value);
+      earRightVal.textContent = v;
+      updateEarDisplay('ear_right', v);
+    });
+
+    document.getElementById('btn-reset-ears').addEventListener('click', () => {
+      earLeftSlider.value = 0;
+      earRightSlider.value = 0;
+      earLeftVal.textContent = '0';
+      earRightVal.textContent = '0';
+      updateEarDisplay('ear_left', 0);
+      updateEarDisplay('ear_right', 0);
     });
 
     sendBtn.addEventListener('click', sendMessage);
