@@ -274,6 +274,97 @@
     let subtitleTimer = null;
     let currentAudio = null; // 当前播放的音频
     let removeCursorTracker = null;
+    let currentGesture = null;
+
+    function easeOutBack(t) {
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    }
+
+    function easeInOutSine(t) {
+      return -(Math.cos(Math.PI * t) - 1) / 2;
+    }
+
+    function applyModelParam(id, value) {
+      model?.internalModel?.coreModel?.setParameterValueById(id, value);
+    }
+
+    function startGesture(keyframes) {
+      currentGesture = {
+        keyframes,
+        startedAt: performance.now(),
+        duration: keyframes[keyframes.length - 1].time
+      };
+    }
+
+    function playRandomGesture() {
+      const gestures = [
+        () => startGesture([
+          { time: 0, values: { ear_left: 0, ear_right: 0 } },
+          { time: 90, values: { ear_left: 1.2, ear_right: 0.15 } },
+          { time: 180, values: { ear_left: -0.5, ear_right: 0 } },
+          { time: 300, values: { ear_left: 1.0, ear_right: 0.1 } },
+          { time: 520, values: { ear_left: 0, ear_right: 0 } }
+        ]),
+        () => startGesture([
+          { time: 0, values: { ear_left: 0, ear_right: 0 } },
+          { time: 90, values: { ear_left: 0.15, ear_right: 1.2 } },
+          { time: 180, values: { ear_left: 0, ear_right: -0.5 } },
+          { time: 300, values: { ear_left: 0.1, ear_right: 1.0 } },
+          { time: 520, values: { ear_left: 0, ear_right: 0 } }
+        ]),
+        () => startGesture([
+          { time: 0, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
+          { time: 130, values: { ParamAngleZ: -24, ParamBodyAngleZ: -8 } },
+          { time: 260, values: { ParamAngleZ: 22, ParamBodyAngleZ: 7 } },
+          { time: 390, values: { ParamAngleZ: -14, ParamBodyAngleZ: -5 } },
+          { time: 620, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } }
+        ]),
+        () => startGesture([
+          { time: 0, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
+          { time: 100, values: { ear_left: 1.0, ear_right: 1.0, ParamAngleZ: 12 } },
+          { time: 210, values: { ear_left: -0.4, ear_right: -0.4, ParamAngleZ: -12 } },
+          { time: 340, values: { ear_left: 0.8, ear_right: 0.8, ParamAngleZ: 8 } },
+          { time: 560, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
+        ])
+      ];
+
+      gestures[Math.floor(Math.random() * gestures.length)]();
+    }
+
+    function updateGesture() {
+      if (!currentGesture) return;
+
+      const elapsed = performance.now() - currentGesture.startedAt;
+      if (elapsed >= currentGesture.duration) {
+        for (const [id, value] of Object.entries(currentGesture.keyframes[currentGesture.keyframes.length - 1].values)) {
+          applyModelParam(id, value);
+        }
+        currentGesture = null;
+        return;
+      }
+
+      let from = currentGesture.keyframes[0];
+      let to = currentGesture.keyframes[currentGesture.keyframes.length - 1];
+      for (let i = 0; i < currentGesture.keyframes.length - 1; i++) {
+        if (elapsed >= currentGesture.keyframes[i].time && elapsed <= currentGesture.keyframes[i + 1].time) {
+          from = currentGesture.keyframes[i];
+          to = currentGesture.keyframes[i + 1];
+          break;
+        }
+      }
+
+      const span = Math.max(1, to.time - from.time);
+      const t = easeInOutSine(Math.max(0, Math.min(1, (elapsed - from.time) / span)));
+      const ids = new Set([...Object.keys(from.values), ...Object.keys(to.values)]);
+
+      for (const id of ids) {
+        const start = from.values[id] ?? 0;
+        const end = to.values[id] ?? 0;
+        applyModelParam(id, start + (end - start) * easeOutBack(t));
+      }
+    }
 
     function setStatus(text) {
       statusText.textContent = text;
@@ -682,6 +773,11 @@
         if (model.anchor) model.anchor.set(0.5, 1.0);
         model.position.set(200, 850);
         pixiApp.stage.addChild(model);
+        model.eventMode = 'static';
+        model.interactive = true;
+        model.cursor = 'pointer';
+        model.on('pointertap', playRandomGesture);
+        pixiApp.ticker.add(updateGesture);
         startCursorTracking();
 
         setStatus('在线');
