@@ -33,8 +33,12 @@
 
     /* 对话字幕 */
     #subtitle {
-      margin-top: 10px;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
       background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
       color: rgba(255,255,255,0.95);
       padding: 10px 12px;
       border-radius: 12px;
@@ -48,7 +52,9 @@
       display: none;
       pointer-events: auto;
       border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.32);
       white-space: pre-wrap;
+      z-index: 999;
     }
     #subtitle.visible { display: block; }
 
@@ -89,7 +95,7 @@
     /* 输入框面板 */
     #chat-container {
       position: fixed;
-      bottom: 20px;
+      bottom: 150px;
       right: 20px;
       width: 320px;
       background: rgba(20, 20, 35, 0.85);
@@ -110,6 +116,9 @@
       margin-bottom: 10px;
       cursor: move;
       user-select: none;
+    }
+    #input-panel-header.dragging {
+      cursor: grabbing;
     }
     #tab-bar {
       display: flex;
@@ -1386,52 +1395,23 @@
     }
 
     function setupChatPanelDrag() {
-      const panel = document.getElementById('chat-container');
       const header = document.getElementById('input-panel-header');
-      if (!panel || !header) return;
-
-      const saved = JSON.parse(localStorage.getItem('inni-chat-panel-position') || 'null');
-      if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
-        panel.style.left = `${Math.max(8, Math.min(window.innerWidth - panel.offsetWidth - 8, saved.left))}px`;
-        panel.style.top = `${Math.max(8, Math.min(window.innerHeight - panel.offsetHeight - 8, saved.top))}px`;
-        panel.style.right = 'auto';
-        panel.style.bottom = 'auto';
-      }
-
-      let dragging = false;
-      let offsetX = 0;
-      let offsetY = 0;
+      if (!header) return;
 
       header.addEventListener('mousedown', (event) => {
         if (event.button !== 0 || event.target.closest('button')) return;
-        const rect = panel.getBoundingClientRect();
-        dragging = true;
-        offsetX = event.clientX - rect.left;
-        offsetY = event.clientY - rect.top;
-        panel.style.left = `${rect.left}px`;
-        panel.style.top = `${rect.top}px`;
-        panel.style.right = 'auto';
-        panel.style.bottom = 'auto';
-        header.style.cursor = 'grabbing';
+        if (window.electronAPI?.startDrag) {
+          window.electronAPI.startDrag();
+          header.classList.add('dragging');
+        }
         event.preventDefault();
       });
 
-      window.addEventListener('mousemove', (event) => {
-        if (!dragging) return;
-        const maxLeft = window.innerWidth - panel.offsetWidth - 8;
-        const maxTop = window.innerHeight - panel.offsetHeight - 8;
-        const left = Math.max(8, Math.min(maxLeft, event.clientX - offsetX));
-        const top = Math.max(8, Math.min(maxTop, event.clientY - offsetY));
-        panel.style.left = `${left}px`;
-        panel.style.top = `${top}px`;
-      });
-
       window.addEventListener('mouseup', () => {
-        if (!dragging) return;
-        dragging = false;
-        header.style.cursor = 'move';
-        const rect = panel.getBoundingClientRect();
-        localStorage.setItem('inni-chat-panel-position', JSON.stringify({ left: rect.left, top: rect.top }));
+        if (window.electronAPI?.stopDrag) {
+          window.electronAPI.stopDrag();
+        }
+        header.classList.remove('dragging');
       });
     }
 
