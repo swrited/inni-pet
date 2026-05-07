@@ -59,6 +59,10 @@ function createWindow() {
     startCursorTracking();
   });
 
+  mainWindow.webContents.on('console-message', (event, level, message) => {
+    console.log(message);
+  });
+
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.type === 'mouseDown' && input.button === 'left') {
       mainWindow?.webContents.send('pet-click');
