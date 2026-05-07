@@ -11,36 +11,9 @@
       background: transparent;
       overflow: hidden;
       height: 100vh;
-      -webkit-app-region: drag;
+      -webkit-app-region: no-drag;
     }
     #app { width: 100%; height: 100%; position: relative; }
-    #drag-handle {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 45px;
-      z-index: 2147483647;
-      background: rgba(255, 255, 255, 0.03);
-      border-bottom: 1px solid rgba(255, 105, 180, 0.12);
-      cursor: grab;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #drag-handle::after {
-      content: '';
-      position: absolute;
-      bottom: 4px;
-      width: 36px;
-      height: 3px;
-      background: rgba(255, 105, 180, 0.35);
-      border-radius: 2px;
-    }
-    #drag-handle:active {
-      cursor: grabbing;
-    }
-
     /* Live2D 画布区域 */
     #live2d-container {
       position: absolute;
@@ -60,30 +33,24 @@
 
     /* 对话字幕 */
     #subtitle {
-      position: absolute;
-      bottom: 280px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(20, 20, 35, 0.8);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      margin-top: 10px;
+      background: rgba(255,255,255,0.08);
       color: rgba(255,255,255,0.95);
-      padding: 10px 20px;
-      border-radius: 14px;
-      font-size: 14px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
       line-height: 1.55;
-      max-width: 85%;
-      text-align: center;
+      width: 100%;
+      max-height: 120px;
+      overflow-y: auto;
+      text-align: left;
       word-wrap: break-word;
-      opacity: 0;
-      pointer-events: none;
-      border: 1px solid rgba(255,77,141,0.35);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-      z-index: 20;
-      transition: opacity 0.35s;
+      display: none;
+      pointer-events: auto;
+      border: 1px solid rgba(255,255,255,0.12);
       white-space: pre-wrap;
     }
-    #subtitle.visible { opacity: 1; }
+    #subtitle.visible { display: block; }
 
     /* 实时识别字幕 */
     #live-subtitle {
@@ -141,6 +108,8 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 10px;
+      cursor: move;
+      user-select: none;
     }
     #tab-bar {
       display: flex;
@@ -473,30 +442,13 @@
       50%       { box-shadow: 0 0 0 8px rgba(255,77,141,0); }
     }
 
-    /* 状态栏 */
-    #status {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      padding: 5px 12px;
-      background: rgba(255,77,141,0.25);
-      color: rgba(255,255,255,0.85);
-      border-radius: 20px;
-      font-size: 11px;
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,77,141,0.25);
-      z-index: 100;
-    }
-
     button, input, canvas { -webkit-app-region: no-drag; }
   </style>
 </head>
-<body>
-  <div id="app">
-    <div id="drag-handle"></div>
+  <body>
+    <div id="app">
     <div id="live2d-container">
       <canvas id="live2d-canvas"></canvas>
-      <div id="subtitle"></div>
       <div id="live-subtitle"><span class="final"></span><span class="interim"></span></div>
     </div>
 
@@ -517,6 +469,7 @@
           <button id="mic-btn" title="语音输入">🎤</button>
           <button id="send-btn">➤</button>
         </div>
+        <div id="subtitle"></div>
       </div>
 
       <!-- 设置 Tab -->
@@ -553,10 +506,6 @@
           </label>
         </div>
       </div>
-    </div>
-
-    <div id="status">
-      <span id="status-text">初始化中...</span>
     </div>
 
     <!-- 调试切换按钮 -->
@@ -630,7 +579,6 @@
   <script>
     let pixiApp = null;
     let model = null;
-    const statusText = document.getElementById('status-text');
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
     const gatewayButtons = document.querySelectorAll('.gateway-btn');
@@ -805,7 +753,6 @@
     }
 
     function setStatus(text) {
-      statusText.textContent = text;
       console.log('[Inni]', text);
     }
 
@@ -841,7 +788,7 @@
       subtitle.textContent = text;
       subtitle.classList.add('visible');
       if (subtitleTimer) clearTimeout(subtitleTimer);
-      // 不再使用定时器隐藏，依赖 speak() 中 audio.onended 来隐藏
+      // 回复区域保留最近一条消息，不随语音播放结束自动隐藏。
     }
 
     // 发送消息
@@ -893,11 +840,7 @@
       // 检查 TTS 开关
       if (!ttsEnabled) {
         console.log('[TTS] 语音输出已关闭');
-        // 无语音时，字幕在几秒后自动消失
         if (subtitleTimer) clearTimeout(subtitleTimer);
-        subtitleTimer = setTimeout(() => {
-          subtitle.classList.remove('visible');
-        }, 4000);
         return;
       }
 
@@ -916,14 +859,12 @@
           currentAudio = audio;
           audio.play();
           audio.onended = () => {
-            subtitle.classList.remove('visible');
             if (subtitleTimer) clearTimeout(subtitleTimer);
             currentAudio = null;
           };
         })
         .catch(e => {
           console.error('TTS error:', e);
-          subtitle.classList.remove('visible');
           currentAudio = null;
         });
     }
@@ -1444,28 +1385,57 @@
       }
     }
 
-    // 窗口拖拽功能
-    function setupWindowDrag() {
-      const dragHandle = document.getElementById('drag-handle');
-      if (!dragHandle) return;
+    function setupChatPanelDrag() {
+      const panel = document.getElementById('chat-container');
+      const header = document.getElementById('input-panel-header');
+      if (!panel || !header) return;
 
-      dragHandle.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
-        if (window.electronAPI?.startDrag) {
-          window.electronAPI.startDrag();
-          dragHandle.style.cursor = 'grabbing';
-        }
+      const saved = JSON.parse(localStorage.getItem('inni-chat-panel-position') || 'null');
+      if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+        panel.style.left = `${Math.max(8, Math.min(window.innerWidth - panel.offsetWidth - 8, saved.left))}px`;
+        panel.style.top = `${Math.max(8, Math.min(window.innerHeight - panel.offsetHeight - 8, saved.top))}px`;
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+      }
+
+      let dragging = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      header.addEventListener('mousedown', (event) => {
+        if (event.button !== 0 || event.target.closest('button')) return;
+        const rect = panel.getBoundingClientRect();
+        dragging = true;
+        offsetX = event.clientX - rect.left;
+        offsetY = event.clientY - rect.top;
+        panel.style.left = `${rect.left}px`;
+        panel.style.top = `${rect.top}px`;
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        header.style.cursor = 'grabbing';
+        event.preventDefault();
+      });
+
+      window.addEventListener('mousemove', (event) => {
+        if (!dragging) return;
+        const maxLeft = window.innerWidth - panel.offsetWidth - 8;
+        const maxTop = window.innerHeight - panel.offsetHeight - 8;
+        const left = Math.max(8, Math.min(maxLeft, event.clientX - offsetX));
+        const top = Math.max(8, Math.min(maxTop, event.clientY - offsetY));
+        panel.style.left = `${left}px`;
+        panel.style.top = `${top}px`;
       });
 
       window.addEventListener('mouseup', () => {
-        if (window.electronAPI?.stopDrag) {
-          window.electronAPI.stopDrag();
-        }
-        if (dragHandle) dragHandle.style.cursor = 'grab';
+        if (!dragging) return;
+        dragging = false;
+        header.style.cursor = 'move';
+        const rect = panel.getBoundingClientRect();
+        localStorage.setItem('inni-chat-panel-position', JSON.stringify({ left: rect.left, top: rect.top }));
       });
     }
 
-    setupWindowDrag();
+    setupChatPanelDrag();
     window.addEventListener('load', initLive2D);
   </script>
 </body>
