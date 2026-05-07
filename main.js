@@ -59,8 +59,17 @@ function createWindow() {
     startCursorTracking();
   });
 
-  mainWindow.webContents.on('console-message', (event, details) => {
-    console.log(details.message);
+  mainWindow.webContents.on('console-message', (event, ...args) => {
+    const details = typeof args[0] === 'object'
+      ? args[0]
+      : { message: args[1], sourceId: args[2], lineNumber: args[3] };
+    const message = details.message;
+    if (!message || message === 'undefined') return;
+    if (message.startsWith('Uncaught')) {
+      console.log(`${message} (${details.sourceId}:${details.lineNumber})`);
+      return;
+    }
+    console.log(message);
   });
 
   mainWindow.webContents.on('before-input-event', (event, input) => {

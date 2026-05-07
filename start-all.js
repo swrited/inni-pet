@@ -42,7 +42,8 @@ setTimeout(() => {
 
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: undefined,
+  terminal: false
 });
 
 console.log('动作命令: left / right / ears / shake / random');

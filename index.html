@@ -812,7 +812,10 @@
         PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR;
 
         setStatus('加载模型中...');
-        model = await Live2DModel.from('./inni_model/inni_2.model3.json');
+        model = await Live2DModel.from('./inni_model/inni_2.model3.json', {
+          autoFocus: false,
+          autoHitTest: false
+        });
 
         const scaleX = 400 / model.width;
         const scaleY = 600 / model.height;
