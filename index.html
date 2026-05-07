@@ -290,8 +290,10 @@
       model?.internalModel?.coreModel?.setParameterValueById(id, value);
     }
 
-    function startGesture(keyframes) {
+    function startGesture(name, keyframes) {
+      console.log(`[Inni] 触发特殊动作: ${name}`);
       currentGesture = {
+        name,
         keyframes,
         startedAt: performance.now(),
         duration: keyframes[keyframes.length - 1].time
@@ -300,28 +302,28 @@
 
     function playRandomGesture() {
       const gestures = [
-        () => startGesture([
+        () => startGesture('左耳抖动', [
           { time: 0, values: { ear_left: 0, ear_right: 0 } },
           { time: 90, values: { ear_left: 1.2, ear_right: 0.15 } },
           { time: 180, values: { ear_left: -0.5, ear_right: 0 } },
           { time: 300, values: { ear_left: 1.0, ear_right: 0.1 } },
           { time: 520, values: { ear_left: 0, ear_right: 0 } }
         ]),
-        () => startGesture([
+        () => startGesture('右耳抖动', [
           { time: 0, values: { ear_left: 0, ear_right: 0 } },
           { time: 90, values: { ear_left: 0.15, ear_right: 1.2 } },
           { time: 180, values: { ear_left: 0, ear_right: -0.5 } },
           { time: 300, values: { ear_left: 0.1, ear_right: 1.0 } },
           { time: 520, values: { ear_left: 0, ear_right: 0 } }
         ]),
-        () => startGesture([
+        () => startGesture('左右摇头', [
           { time: 0, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
           { time: 130, values: { ParamAngleZ: -24, ParamBodyAngleZ: -8 } },
           { time: 260, values: { ParamAngleZ: 22, ParamBodyAngleZ: 7 } },
           { time: 390, values: { ParamAngleZ: -14, ParamBodyAngleZ: -5 } },
           { time: 620, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } }
         ]),
-        () => startGesture([
+        () => startGesture('双耳抖动', [
           { time: 0, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
           { time: 100, values: { ear_left: 1.0, ear_right: 1.0, ParamAngleZ: 12 } },
           { time: 210, values: { ear_left: -0.4, ear_right: -0.4, ParamAngleZ: -12 } },
@@ -777,6 +779,7 @@
         model.interactive = true;
         model.cursor = 'pointer';
         model.on('pointertap', playRandomGesture);
+        canvas.addEventListener('click', playRandomGesture);
         pixiApp.ticker.add(updateGesture);
         startCursorTracking();
 
