@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>PIXI 诊断</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #333; color: #0f0; font-family: monospace; font-size: 12px; }
+        #log { background: #000; padding: 20px; margin-bottom: 20px; border: 1px solid #0f0; max-height: 50vh; overflow-y: auto; }
+        .entry { margin: 3px 0; }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+        .info { color: #0ff; }
+    </style>
+</head>
+<body>
+    <h1>PIXI 诊断工具</h1>
+    <div id="log"></div>
+
+    <script src="https://unpkg.com/pixi.js@7.3.2/dist/pixi.min.js"></script>
+
+    <script>
+        const logEl = document.getElementById('log');
+        
+        function log(msg, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = 'entry ' + type;
+            entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+
+        log('=== PIXI 诊断开始 ===', 'info');
+        
+        // 检查 PIXI
+        log('PIXI 版本: ' + PIXI.VERSION, 'success');
+        log('PIXI.settings: ' + JSON.stringify(PIXI.settings), 'info');
+
+        // 检查 WebGL 支持
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        log('WebGL 支持: ' + (gl ? '✓ 是' : '✗ 否'), gl ? 'success' : 'error');
+
+        if (gl) {
+            log('WebGL 版本: ' + gl.getParameter(gl.VERSION), 'info');
+            log('WebGL 厂商: ' + gl.getParameter(gl.VENDOR), 'info');
+            log('WebGL 渲染器: ' + gl.getParameter(gl.RENDERER), 'info');
+        }
+
+        // 尝试创建 PIXI Application
+        log('尝试创建 PIXI Application...', 'info');
+        try {
+            const testCanvas = document.createElement('canvas');
+            testCanvas.width = 800;
+            testCanvas.height = 600;
+            
+            const app = new PIXI.Application({
+                canvas: testCanvas,
+                width: 800,
+                height: 600,
+                backgroundColor: 0xffffff,
+                antialias: true
+            });
+            
+            log('✓ PIXI Application 创建成功', 'success');
+            log('Renderer 类型: ' + app.renderer.type, 'info');
+            log('Renderer 名称: ' + app.renderer.constructor.name, 'info');
+            
+            // 尝试绘制
+            const rect = new PIXI.Graphics();
+            rect.beginFill(0xff0000);
+            rect.drawRect(0, 0, 100, 100);
+            rect.endFill();
+            rect.x = 350;
+            rect.y = 250;
+            app.stage.addChild(rect);
+            
+            log('✓ 图形已添加到舞台', 'success');
+            log('舞台子元素数: ' + app.stage.children.length, 'info');
+            
+            // 尝试渲染
+            app.render();
+            log('✓ 渲染完成', 'success');
+            
+            // 检查 canvas 内容
+            const imageData = testCanvas.getContext('2d').getImageData(0, 0, 1, 1);
+            log('Canvas 像素数据: ' + JSON.stringify(Array.from(imageData.data)), 'info');
+            
+            log('=== 诊断完成 - PIXI 工作正常 ===', 'success');
+            
+        } catch (error) {
+            log('❌ 错误: ' + error.message, 'error');
+            log('堆栈: ' + error.stack, 'error');
+        }
+    </script>
+</body>
+</html>
+

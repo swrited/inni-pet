@@ -1,0 +1,14 @@
+node_modules/
+electron-bin/
+electron-runner/
+
+.DS_Store
+*.log
+
+# Large local archives/build artifacts
+*.zip
+*.dmg
+*.pkg
+
+# Local tool state
+.claude/

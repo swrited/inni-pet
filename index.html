@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inni Pet - Live2D 桌面宠物</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      height: 100vh;
+    }
+    #app { width: 100%; height: 100%; position: relative; }
+
+    /* Live2D 画布区域 */
+    #live2d-container {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 600px;
+      background: radial-gradient(ellipse at center bottom, rgba(255,105,180,0.3) 0%, transparent 70%);
+      border-radius: 20px;
+    }
+    canvas { width: 100%; height: 100%; border-radius: 20px; }
+
+    /* 对话字幕 */
+    #subtitle {
+      position: absolute;
+      bottom: 200px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 20, 35, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: rgba(255,255,255,0.95);
+      padding: 10px 20px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.55;
+      max-width: 85%;
+      text-align: center;
+      word-wrap: break-word;
+      opacity: 0;
+      pointer-events: none;
+      border: 1px solid rgba(255,77,141,0.35);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      z-index: 20;
+      transition: opacity 0.35s;
+      white-space: pre-wrap;
+    }
+    #subtitle.visible { opacity: 1; }
+
+    /* 实时识别字幕 */
+    #live-subtitle {
+      position: absolute;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: rgba(255,255,255,0.85);
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 80%;
+      text-align: center;
+      word-wrap: break-word;
+      opacity: 0;
+      pointer-events: none;
+      border: 1px solid rgba(255,77,141,0.25);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      z-index: 19;
+      transition: opacity 0.3s;
+      white-space: pre-wrap;
+    }
+    #live-subtitle.visible { opacity: 1; }
+    #live-subtitle .interim {
+      color: rgba(255,255,255,0.5);
+      font-style: italic;
+    }
+    #live-subtitle .final {
+      color: rgba(255,255,255,0.95);
+    }
+
+    /* 输入框面板 */
+    #chat-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      background: rgba(20, 20, 35, 0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 20px;
+      box-shadow:
+        0 8px 32px rgba(255,77,141,0.25),
+        0 0 0 1px rgba(255,255,255,0.1) inset;
+      padding: 14px;
+      z-index: 998;
+    }
+    #input-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    #input-panel-title {
+      color: rgba(255,255,255,0.8);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    #input-panel-close {
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: rgba(255,255,255,0.6);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #input-panel-close:hover { background: rgba(255,255,255,0.25); }
+    #input-panel-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    #chat-input {
+      flex: 1;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 10px 16px;
+      outline: none;
+      font-size: 13.5px;
+      color: rgba(255,255,255,0.9);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    #chat-input::placeholder { color: rgba(255,255,255,0.35); }
+    #chat-input:focus {
+      border-color: rgba(255,77,141,0.5);
+      background: rgba(255,255,255,0.14);
+    }
+    #send-btn, #mic-btn {
+      background: linear-gradient(135deg, #ff4d8d 0%, #e040fb 100%);
+      color: white;
+      border: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    #send-btn:hover { opacity: 0.88; transform: scale(1.08); }
+    #send-btn:active { transform: scale(0.95); }
+    #mic-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      font-size: 17px;
+    }
+    #mic-btn:hover { background: rgba(255,77,141,0.3); transform: scale(1.08); }
+    #mic-btn:active, #mic-btn.listening {
+      background: rgba(255,77,141,0.6);
+      transform: scale(1.05);
+      animation: micPulse 1s ease-in-out infinite;
+    }
+    @keyframes micPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,77,141,0.4); }
+      50%       { box-shadow: 0 0 0 8px rgba(255,77,141,0); }
+    }
+
+    /* 状态栏 */
+    #status {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      padding: 5px 12px;
+      background: rgba(255,77,141,0.25);
+      color: rgba(255,255,255,0.85);
+      border-radius: 20px;
+      font-size: 11px;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,77,141,0.25);
+      z-index: 100;
+    }
+
+    /* 呼出聊天按钮 */
+    #show-chat-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #ff4d8d 0%, #e040fb 100%);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(255,77,141,0.4);
+      z-index: 999;
+      transition: transform 0.2s;
+    }
+    #show-chat-btn:hover { transform: scale(1.1); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="live2d-container">
+      <canvas id="live2d-canvas"></canvas>
+      <div id="subtitle"></div>
+      <div id="live-subtitle"><span class="final"></span><span class="interim"></span></div>
+    </div>
+
+    <!-- 输入框面板 -->
+    <div id="chat-container">
+      <div id="input-panel-header">
+        <span id="input-panel-title">💬 Inni</span>
+        <button id="input-panel-close">✕</button>
+      </div>
+      <div id="input-panel-row">
+        <input type="text" id="chat-input" placeholder="输入消息，按回车发送..." />
+        <button id="mic-btn" title="语音输入">🎤</button>
+        <button id="send-btn">➤</button>
+      </div>
+    </div>
+
+    <div id="status">
+      <span id="status-text">初始化中...</span>
+    </div>
+
+    <!-- 呼出聊天按钮 -->
+    <button id="show-chat-btn" title="打开聊天框">💬</button>
+  </div>
+
+  <!-- Pixi.js -->
+  <script src="./pixi.min.js"></script>
+  <script>window.process = window.process || { env: { NODE_ENV: 'production' } };</script>
+  <script src="./live2dcubismcore.min.js"></script>
+  <script src="./cubism4.min.js"></script>
+
+  <script>
+    let pixiApp = null;
+    let model = null;
+    const statusText = document.getElementById('status-text');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    const canvas = document.getElementById('live2d-canvas');
+    const subtitle = document.getElementById('subtitle');
+    const liveSubtitle = document.getElementById('live-subtitle');
+    const liveSubtitleFinal = liveSubtitle.querySelector('.final');
+    const liveSubtitleInterim = liveSubtitle.querySelector('.interim');
+    let subtitleTimer = null;
+    let currentAudio = null; // 当前播放的音频
+    let removeCursorTracker = null;
+
+    function setStatus(text) {
+      statusText.textContent = text;
+      console.log('[Inni]', text);
+    }
+
+    // 显示字幕
+    function showSubtitle(text) {
+      subtitle.textContent = text;
+      subtitle.classList.add('visible');
+      if (subtitleTimer) clearTimeout(subtitleTimer);
+      // 不再使用定时器隐藏，依赖 speak() 中 audio.onended 来隐藏
+    }
+
+    // 发送消息
+    async function sendMessage() {
+      const message = chatInput.value.trim();
+      if (!message) return;
+      chatInput.value = '';
+      setStatus('思考中...');
+
+      try {
+        const response = await fetch('http://localhost:1234/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: '你是一个可爱的桌面宠物助手，名叫 Inni。回复要简短自然，像朋友聊天一样，通常1-3句话就好，不要啰嗦。语气轻松随意，可以适当用一些语气词。' },
+              { role: 'user', content: message }
+            ],
+            model: 'ana',
+            stream: false
+          })
+        });
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || '嗯...我没听清楚诶';
+        setStatus('在线');
+        showSubtitle(reply);
+        speak(reply);
+      } catch (error) {
+        console.error('Chat error:', error);
+        setStatus('连接失败');
+        showSubtitle('连接失败，请检查桥接服务是否启动');
+      }
+    }
+
+    // 停止当前播放的音频
+    function stopCurrentAudio() {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+      }
+      // 不再这里隐藏字幕，依赖 speak() 中 audio.onended 来隐藏
+      if (subtitleTimer) clearTimeout(subtitleTimer);
+    }
+
+    // 语音播放
+    function speak(text) {
+      // 打断旧音频
+      stopCurrentAudio();
+
+      fetch('http://localhost:1234/v1/audio/speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text })
+      })
+        .then(r => r.blob())
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          currentAudio = audio;
+          audio.play();
+          audio.onended = () => {
+            subtitle.classList.remove('visible');
+            if (subtitleTimer) clearTimeout(subtitleTimer);
+            currentAudio = null;
+          };
+        })
+        .catch(e => {
+          console.error('TTS error:', e);
+          subtitle.classList.remove('visible');
+          currentAudio = null;
+        });
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+});
+
+    // ========== 语音识别 ==========
+    const micBtn = document.getElementById('mic-btn');
+    let isUsingWhisper = false;      // 是否使用 Whisper ASR
+    let isListening = false;
+    let isContinuousMode = false;
+
+    // ---- Web Speech API 部分 ----
+    let recognition = null;
+    let finalTranscript = '';
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'zh-CN';
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        console.log('[Mic] Web Speech 识别开始');
+        isListening = true;
+        isUsingWhisper = false;
+        micBtn.classList.add('listening');
+        setStatus('正在聆听...');
+        liveSubtitle.classList.add('visible');
+        liveSubtitleFinal.textContent = '';
+        liveSubtitleInterim.textContent = '';
+        finalTranscript = '';
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+            liveSubtitleFinal.textContent = finalTranscript;
+            liveSubtitleInterim.textContent = '';
+            console.log('[Mic] 最终识别:', finalTranscript);
+          } else {
+            interimTranscript += transcript;
+            liveSubtitleInterim.textContent = interimTranscript;
+          }
+        }
+      };
+
+      recognition.onend = () => {
+        console.log('[Mic] Web Speech 识别结束');
+        isListening = false;
+
+        if (finalTranscript.trim()) {
+          chatInput.value = finalTranscript.trim();
+          liveSubtitleFinal.textContent = finalTranscript.trim();
+          liveSubtitleInterim.textContent = '';
+          setTimeout(() => sendMessage(), 300);
+        }
+
+        // 持续模式下继续（如果没切换到 whisper）
+        if (isContinuousMode && !isUsingWhisper) {
+          setTimeout(() => {
+            if (isContinuousMode && !isListening && !isUsingWhisper) {
+              try { recognition.start(); } catch (e) {}
+            }
+          }, 500);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('[Mic] Web Speech 错误:', event.error);
+        if (event.error === 'network') {
+          // 网络错误，切换到 Whisper ASR
+          console.log('[Mic] 网络错误，切换到 Whisper ASR');
+          setStatus('切换到本地识别...');
+          switchToWhisperASR();
+        } else if (event.error === 'not-allowed') {
+          setStatus('麦克风权限被拒绝');
+          isContinuousMode = false;
+        } else if (event.error === 'no-speech') {
+          // 继续监听
+        } else {
+          setStatus('识别出错');
+        }
+      };
+    }
+
+    // ---- Whisper ASR 备用方案 ----
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let micStream = null;
+    let audioContext = null;
+    let analyser = null;
+    let silenceTimer = null;
+    let lastSpeechTime = Date.now();
+    const SILENCE_THRESHOLD = 0.015;
+    const SILENCE_DURATION = 1500;
+
+    function getVolume() {
+      if (!analyser) return 0;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      const sum = dataArray.reduce((a, b) => a + b, 0);
+      return sum / dataArray.length / 255;
+    }
+
+    function checkSilence() {
+      if (!isListening || isUsingWhisper) return;
+      const volume = getVolume();
+      if (volume > SILENCE_THRESHOLD) {
+        lastSpeechTime = Date.now();
+      } else if (Date.now() - lastSpeechTime > SILENCE_DURATION) {
+        console.log('[Mic] Whisper: 检测到静音，停止录音');
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+      }
+    }
+
+    function switchToWhisperASR() {
+      if (!recognition || isUsingWhisper) return;
+
+      // 停止 Web Speech
+      try { recognition.stop(); } catch (e) {}
+
+      isUsingWhisper = true;
+      isListening = false;
+      liveSubtitle.classList.remove('visible');
+
+      startWhisperRecording();
+    }
+
+    async function startWhisperRecording() {
+      if (isListening || !isContinuousMode) return;
+
+      try {
+        console.log('[Mic] Whisper: 开始录音');
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(micStream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        audioChunks = [];
+        lastSpeechTime = Date.now();
+        mediaRecorder = new MediaRecorder(micStream, { mimeType: 'audio/webm;codecs=opus' });
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstart = () => {
+          isListening = true;
+          isUsingWhisper = true;
+          micBtn.classList.add('listening');
+          setStatus('正在聆听...');
+          silenceTimer = setInterval(checkSilence, 100);
+        };
+
+        mediaRecorder.onstop = async () => {
+          isListening = false;
+          clearInterval(silenceTimer);
+          silenceTimer = null;
+          micBtn.classList.remove('listening');
+
+          if (audioContext) { audioContext.close(); audioContext = null; }
+          if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+          analyser = null;
+
+          setStatus('识别中...');
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const base64 = reader.result.split(',')[1];
+            try {
+              const res = await fetch('http://localhost:12434/asr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audio: base64 })
+              });
+              const data = await res.json();
+              if (data.text && data.text.trim()) {
+                console.log('[Mic] Whisper 识别:', data.text.trim());
+                chatInput.value = data.text.trim();
+                liveSubtitleFinal.textContent = data.text.trim();
+                liveSubtitleInterim.textContent = '';
+                liveSubtitle.classList.add('visible');
+                setTimeout(() => sendMessage(), 300);
+              } else {
+                liveSubtitle.classList.remove('visible');
+              }
+            } catch (e) {
+              console.error('ASR error:', e);
+            }
+
+            setStatus('在线');
+            // 继续录音
+            if (isContinuousMode) {
+              setTimeout(() => {
+                if (isContinuousMode) startWhisperRecording();
+              }, 500);
+            }
+          };
+          reader.readAsDataURL(blob);
+        };
+
+        mediaRecorder.start();
+      } catch (e) {
+        console.error('[Mic] Whisper 错误:', e);
+        setStatus('麦克风不可用');
+        isContinuousMode = false;
+      }
+    }
+
+    function stopWhisperRecording() {
+      isContinuousMode = false;
+      isListening = false;
+      isUsingWhisper = false;
+      clearInterval(silenceTimer);
+      silenceTimer = null;
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+      if (audioContext) { audioContext.close(); audioContext = null; }
+      if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+      analyser = null;
+      micBtn.classList.remove('listening');
+      liveSubtitle.classList.remove('visible');
+    }
+
+    // 麦克风按钮点击
+    micBtn.addEventListener('click', () => {
+      if (isListening) {
+        // 停止
+        console.log('[Mic] 停止');
+        isContinuousMode = false;
+        if (isUsingWhisper) {
+          stopWhisperRecording();
+        } else {
+          try { recognition.stop(); } catch (e) {}
+        }
+        liveSubtitle.classList.remove('visible');
+        setStatus('在线');
+      } else {
+        // 开始
+        console.log('[Mic] 开始');
+        stopCurrentAudio();
+        isContinuousMode = true;
+        finalTranscript = '';
+
+        if (recognition && !isUsingWhisper) {
+          try { recognition.start(); } catch (e) {}
+        } else {
+          // 直接使用 Whisper
+          isUsingWhisper = true;
+          startWhisperRecording();
+        }
+      }
+    });
+
+    // 关闭输入框
+    document.getElementById('input-panel-close').addEventListener('click', () => {
+      document.getElementById('chat-container').style.display = 'none';
+      document.getElementById('show-chat-btn').style.display = 'flex';
+    });
+
+    // 呼出聊天框
+    document.getElementById('show-chat-btn').addEventListener('click', () => {
+      document.getElementById('chat-container').style.display = '';
+      document.getElementById('show-chat-btn').style.display = 'none';
+      chatInput.focus();
+    });
+
+    // 初始化 Live2D
+    function startCursorTracking() {
+      if (!window.electronAPI?.onCursorPosition || removeCursorTracker) return;
+
+      const live2dContainer = document.getElementById('live2d-container');
+      removeCursorTracker = window.electronAPI.onCursorPosition(({ cursor, windowBounds }) => {
+        if (!model || !live2dContainer) return;
+
+        const rect = live2dContainer.getBoundingClientRect();
+        const pageX = cursor.x - windowBounds.x;
+        const pageY = cursor.y - windowBounds.y;
+        const stageX = (pageX - rect.left) * (400 / rect.width);
+        const rawStageY = 600 - (pageY - rect.top) * (600 / rect.height);
+        const stageY = 300 + (rawStageY - 300) * 2.2;
+        model.focus(stageX, stageY);
+      });
+    }
+
+    async function initLive2D() {
+      try {
+        setStatus('初始化 PIXI...');
+        pixiApp = new PIXI.Application({
+          view: canvas,
+          width: 400,
+          height: 600,
+          transparent: true,
+          antialias: true,
+          resolution: window.devicePixelRatio || 1,
+          autoDensity: true
+        });
+
+        const Live2DModel = PIXI.live2d.Live2DModel;
+        Live2DModel.registerTicker(PIXI.Ticker);
+        PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR;
+
+        setStatus('加载模型中...');
+        model = await Live2DModel.from('./inni_model/inni_2.model3.json');
+
+        const scaleX = 400 / model.width;
+        const scaleY = 600 / model.height;
+        model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+        if (model.anchor) model.anchor.set(0.5, 1.0);
+        model.position.set(200, 850);
+        pixiApp.stage.addChild(model);
+        startCursorTracking();
+
+        setStatus('在线');
+        console.log('[Inni] 模型加载成功');
+      } catch (error) {
+        console.error('[Inni] 模型加载失败:', error);
+        setStatus('模型加载失败');
+      }
+    }
+
+    window.addEventListener('load', initLive2D);
+  </script>
+</body>
+</html>

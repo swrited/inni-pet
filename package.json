@@ -1,0 +1,13 @@
+{
+  "name": "inni-pet",
+  "productName": "Inni Pet",
+  "version": "1.0.0",
+  "description": "Inni Desktop Pet with Live2D",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^41.0.3"
+  }
+}

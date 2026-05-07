@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>PIXI Canvas2D 测试</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            background: #333; 
+            color: #0f0; 
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #log { 
+            background: #000; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border: 1px solid #0f0; 
+            max-height: 30vh; 
+            overflow-y: auto; 
+            flex-shrink: 0;
+        }
+        #pixi-container {
+            flex: 1;
+            border: 3px solid #0f0;
+            background: white;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <h1>PIXI Canvas2D 测试（强制 2D 渲染）</h1>
+    <div id="log"></div>
+    <div id="pixi-container"></div>
+
+    <script src="https://unpkg.com/pixi.js@7.3.2/dist/pixi.min.js"></script>
+
+    <script>
+        const logEl = document.getElementById('log');
+        const container = document.getElementById('pixi-container');
+        
+        function log(msg) {
+            const entry = document.createElement('div');
+            entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+
+        log('页面已加载');
+        
+        try {
+            // 禁用 WebGL，强制使用 Canvas 2D
+            PIXI.settings.PREFER_ENV = PIXI.ENV.CANVAS;
+            log('✓ 已强制使用 Canvas 2D 渲染器');
+
+            // 创建 canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 600;
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.display = 'block';
+            container.appendChild(canvas);
+            
+            log('✓ Canvas 已创建并添加到 DOM');
+
+            const app = new PIXI.Application({
+                canvas: canvas,
+                width: 800,
+                height: 600,
+                backgroundColor: 0xffffff,
+                antialias: true
+            });
+            log('✓ PIXI Application 创建成功');
+            log('Renderer: ' + app.renderer.constructor.name);
+
+            // 绘制红色矩形
+            const rect = new PIXI.Graphics();
+            rect.beginFill(0xff0000);
+            rect.drawRect(0, 0, 100, 100);
+            rect.endFill();
+            rect.x = 350;
+            rect.y = 250;
+            app.stage.addChild(rect);
+            log('✓ 红色矩形已添加');
+
+            // 绘制蓝色圆形
+            const circle = new PIXI.Graphics();
+            circle.beginFill(0x0000ff);
+            circle.drawCircle(0, 0, 50);
+            circle.endFill();
+            circle.x = 400;
+            circle.y = 300;
+            app.stage.addChild(circle);
+            log('✓ 蓝色圆形已添加');
+
+            // 渲染
+            app.render();
+            log('✓ 渲染完成');
+
+            log('✓✓✓ Canvas 2D 工作正常 - 你应该看到红色矩形和蓝色圆形 ✓✓✓');
+
+        } catch (error) {
+            log('❌ 错误: ' + error.message);
+            log('堆栈: ' + error.stack);
+        }
+    </script>
+</body>
+</html>
+

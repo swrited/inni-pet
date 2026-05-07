@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas 基础测试</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #333; color: #0f0; font-family: monospace; }
+        #log { background: #000; padding: 20px; margin-bottom: 20px; border: 1px solid #0f0; max-height: 30vh; overflow-y: auto; }
+        canvas { border: 3px solid #0f0; background: white; display: block; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Canvas 基础测试</h1>
+    <div id="log"></div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <script>
+        const logEl = document.getElementById('log');
+        
+        function log(msg) {
+            const entry = document.createElement('div');
+            entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+
+        log('页面已加载');
+        
+        const canvas = document.getElementById('canvas');
+        log('Canvas 元素: ' + (canvas ? '✓ 找到' : '✗ 未找到'));
+        log('Canvas 尺寸: ' + canvas.width + 'x' + canvas.height);
+
+        const ctx = canvas.getContext('2d');
+        log('2D Context: ' + (ctx ? '✓ 获取成功' : '✗ 获取失败'));
+
+        // 绘制白色背景
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        log('✓ 绘制白色背景');
+
+        // 绘制红色矩形
+        ctx.fillStyle = 'red';
+        ctx.fillRect(350, 250, 100, 100);
+        log('✓ 绘制红色矩形 (350, 250, 100x100)');
+
+        // 绘制蓝色圆形
+        ctx.fillStyle = 'blue';
+        ctx.beginPath();
+        ctx.arc(400, 300, 50, 0, Math.PI * 2);
+        ctx.fill();
+        log('✓ 绘制蓝色圆形 (400, 300, 半径50)');
+
+        // 绘制文字
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText('Canvas 工作正常!', 300, 150);
+        log('✓ 绘制文字');
+
+        log('✓✓✓ 测试完成 - 你应该看到红色矩形、蓝色圆形和文字 ✓✓✓');
+    </script>
+</body>
+</html>
+

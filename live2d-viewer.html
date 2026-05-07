@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiyori Live2D Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #canvas {
+            display: block;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+        
+        #status {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">加载中...</div>
+    <canvas id="canvas"></canvas>
+
+    <div id="controls">
+        <button onclick="playMotion('Idle')">待机</button>
+        <button onclick="playMotion('Tap')">点击</button>
+        <button onclick="playMotion('Flick')">滑动</button>
+    </div>
+
+    <!-- PIXI.js -->
+    <script src="https://unpkg.com/pixi.js@7.3.2/dist/pixi.min.js"></script>
+    
+    <!-- JSZip -->
+    <script src="./node_modules/jszip/dist/jszip.min.js"></script>
+    
+    <!-- Cubism 4 Core -->
+    <script src="./live2dcubismcore.min.js"></script>
+    
+    <!-- pixi-live2d-display -->
+    <script src="./cubism4.min.js"></script>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        let model = null;
+
+        function setStatus(msg) {
+            statusEl.textContent = msg;
+            console.log(msg);
+        }
+
+        function playMotion(motionGroup) {
+            if (!model) return;
+            console.log('Playing motion:', motionGroup);
+            model.motion(motionGroup).catch(err => {
+                console.error('Motion error:', err);
+            });
+        }
+
+        async function init() {
+            try {
+                setStatus('初始化 PIXI...');
+                console.log('PIXI version:', PIXI.VERSION);
+                console.log('PIXI.live2d:', PIXI.live2d);
+
+                const canvas = document.getElementById('canvas');
+                console.log('Canvas element:', canvas);
+
+                const app = new PIXI.Application({
+                    canvas: canvas,
+                    width: 800,
+                    height: 600,
+                    transparent: false,
+                    backgroundColor: 0xffffff,
+                    antialias: true,
+                    resolution: window.devicePixelRatio || 1
+                });
+
+                console.log('PIXI App created:', app);
+
+                setStatus('注册 Ticker...');
+                const Live2DModel = PIXI.live2d.Live2DModel;
+                console.log('Live2DModel:', Live2DModel);
+
+                Live2DModel.registerTicker(PIXI.Ticker);
+
+                setStatus('加载模型...');
+                const modelPath = './hiyori_free_zh/runtime/hiyori_free_t08.model3.json';
+                console.log('Loading model from:', modelPath);
+
+                model = await Live2DModel.from(modelPath);
+                console.log('Model loaded:', model);
+                console.log('Model width:', model.width, 'height:', model.height);
+
+                setStatus('添加到舞台...');
+                app.stage.addChild(model);
+
+                // 计算合适的缩放比例
+                const maxWidth = app.screen.width * 0.8;
+                const maxHeight = app.screen.height * 0.8;
+                const scaleX = maxWidth / model.width;
+                const scaleY = maxHeight / model.height;
+                const scale = Math.min(scaleX, scaleY);
+
+                // 居中显示
+                model.x = app.screen.width / 2;
+                model.y = app.screen.height / 2;
+                model.anchor.set(0.5, 0.5);
+                model.scale.set(scale);
+
+                console.log('Calculated scale:', scale);
+                console.log('Model position:', model.x, model.y);
+                console.log('Model scale:', model.scale.x, model.scale.y);
+                console.log('Model visible:', model.visible);
+                console.log('Stage children:', app.stage.children.length);
+
+                setStatus('✓ 模型加载成功！点击按钮或模型可以互动');
+
+                // 互动
+                model.on('hit', (hitAreas) => {
+                    console.log('Hit areas:', hitAreas);
+                    if (hitAreas.includes('Body')) {
+                        playMotion('Tap@Body');
+                    }
+                });
+
+            } catch (error) {
+                setStatus('❌ 错误: ' + error.message);
+                console.error('Full error:', error);
+                console.error('Stack:', error.stack);
+            }
+        }
+
+        // 等待 DOM 加载完成
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
+

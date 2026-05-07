@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiyori Live2D Debug</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            width: 100%; 
+            height: 100vh; 
+            background: #333;
+            font-family: monospace;
+            color: #0f0;
+            overflow: auto;
+            padding: 20px;
+        }
+        #log { 
+            background: #000; 
+            padding: 20px; 
+            border-radius: 5px;
+            max-height: 50vh;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid #0f0;
+        }
+        .log-entry { margin: 5px 0; }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+        #canvas { 
+            border: 2px solid #0f0;
+            background: white;
+            display: block;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live2D Debug Console</h1>
+    <div id="log"></div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <script src="https://unpkg.com/pixi.js@7.3.2/dist/pixi.min.js"></script>
+    <script src="./node_modules/jszip/dist/jszip.min.js"></script>
+    <script src="./live2dcubismcore.min.js"></script>
+    <script src="./cubism4.min.js"></script>
+
+    <script>
+        const logEl = document.getElementById('log');
+        
+        function log(msg, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : '');
+            entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+
+        async function init() {
+            try {
+                log('开始初始化...', 'info');
+                
+                log('检查 PIXI...', 'info');
+                if (!window.PIXI) throw new Error('PIXI not found');
+                log('✓ PIXI 已加载: ' + PIXI.VERSION, 'success');
+
+                log('检查 PIXI.live2d...', 'info');
+                if (!PIXI.live2d) throw new Error('PIXI.live2d not found');
+                log('✓ PIXI.live2d 已加载', 'success');
+
+                log('创建 PIXI Application...', 'info');
+                const canvas = document.getElementById('canvas');
+                const app = new PIXI.Application({
+                    canvas: canvas,
+                    width: 800,
+                    height: 600,
+                    backgroundColor: 0xffffff,
+                    antialias: true
+                });
+                log('✓ PIXI App 创建成功', 'success');
+
+                log('注册 Ticker...', 'info');
+                const Live2DModel = PIXI.live2d.Live2DModel;
+                Live2DModel.registerTicker(PIXI.Ticker);
+                log('✓ Ticker 已注册', 'success');
+
+                log('加载模型文件...', 'info');
+                const modelPath = './hiyori_free_zh/runtime/hiyori_free_t08.model3.json';
+                const model = await Live2DModel.from(modelPath);
+                log('✓ 模型加载成功', 'success');
+                log('  - 宽度: ' + model.width + ', 高度: ' + model.height, 'info');
+
+                log('添加到舞台...', 'info');
+                app.stage.addChild(model);
+                log('✓ 模型已添加到舞台', 'success');
+
+                log('调整位置和缩放...', 'info');
+                const maxWidth = 800 * 0.9;
+                const maxHeight = 600 * 0.9;
+                const scaleX = maxWidth / model.width;
+                const scaleY = maxHeight / model.height;
+                const scale = Math.min(scaleX, scaleY);
+
+                model.x = 400;
+                model.y = 300;
+                model.anchor.set(0.5, 0.5);
+                model.scale.set(scale);
+
+                log('✓ 位置调整完成', 'success');
+                log('  - 位置: (' + model.x + ', ' + model.y + ')', 'info');
+                log('  - 缩放: ' + scale.toFixed(4), 'info');
+                log('  - 可见: ' + model.visible, 'info');
+
+                // 添加一个简单的红色矩形作为测试
+                log('添加测试矩形...', 'info');
+                const testRect = new PIXI.Graphics();
+                testRect.beginFill(0xff0000);
+                testRect.drawRect(0, 0, 100, 100);
+                testRect.endFill();
+                testRect.x = 350;
+                testRect.y = 250;
+                app.stage.addChild(testRect);
+                log('✓ 测试矩形已添加', 'success');
+
+                // 强制渲染
+                log('强制渲染...', 'info');
+                app.render();
+                log('✓ 渲染完成', 'success');
+
+                log('✓✓✓ 初始化完成！应该能看到红色矩形和模型 ✓✓✓', 'success');
+
+            } catch (error) {
+                log('❌ 错误: ' + error.message, 'error');
+                log('堆栈: ' + error.stack, 'error');
+            }
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
+
