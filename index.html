@@ -302,34 +302,36 @@
     }
 
     function playRandomGesture() {
+      if (currentGesture) return;
+
       const gestures = [
         () => startGesture('左耳抖动', [
           { time: 0, values: { ear_left: 0, ear_right: 0 } },
-          { time: 90, values: { ear_left: 1.2, ear_right: 0.15 } },
-          { time: 180, values: { ear_left: -0.5, ear_right: 0 } },
-          { time: 300, values: { ear_left: 1.0, ear_right: 0.1 } },
-          { time: 520, values: { ear_left: 0, ear_right: 0 } }
+          { time: 120, values: { ear_left: 2.4, ear_right: 0.25 } },
+          { time: 260, values: { ear_left: -1.4, ear_right: 0 } },
+          { time: 420, values: { ear_left: 2.0, ear_right: 0.2 } },
+          { time: 700, values: { ear_left: 0, ear_right: 0 } }
         ]),
         () => startGesture('右耳抖动', [
           { time: 0, values: { ear_left: 0, ear_right: 0 } },
-          { time: 90, values: { ear_left: 0.15, ear_right: 1.2 } },
-          { time: 180, values: { ear_left: 0, ear_right: -0.5 } },
-          { time: 300, values: { ear_left: 0.1, ear_right: 1.0 } },
-          { time: 520, values: { ear_left: 0, ear_right: 0 } }
+          { time: 120, values: { ear_left: 0.25, ear_right: 2.4 } },
+          { time: 260, values: { ear_left: 0, ear_right: -1.4 } },
+          { time: 420, values: { ear_left: 0.2, ear_right: 2.0 } },
+          { time: 700, values: { ear_left: 0, ear_right: 0 } }
         ]),
         () => startGesture('左右摇头', [
           { time: 0, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } },
-          { time: 130, values: { ParamAngleZ: -24, ParamBodyAngleZ: -8 } },
-          { time: 260, values: { ParamAngleZ: 22, ParamBodyAngleZ: 7 } },
-          { time: 390, values: { ParamAngleZ: -14, ParamBodyAngleZ: -5 } },
-          { time: 620, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } }
+          { time: 260, values: { ParamAngleZ: -22, ParamBodyAngleZ: -7 } },
+          { time: 560, values: { ParamAngleZ: 20, ParamBodyAngleZ: 6 } },
+          { time: 860, values: { ParamAngleZ: -12, ParamBodyAngleZ: -4 } },
+          { time: 1200, values: { ParamAngleZ: 0, ParamBodyAngleZ: 0 } }
         ]),
         () => startGesture('双耳抖动', [
           { time: 0, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } },
-          { time: 100, values: { ear_left: 1.0, ear_right: 1.0, ParamAngleZ: 12 } },
-          { time: 210, values: { ear_left: -0.4, ear_right: -0.4, ParamAngleZ: -12 } },
-          { time: 340, values: { ear_left: 0.8, ear_right: 0.8, ParamAngleZ: 8 } },
-          { time: 560, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
+          { time: 130, values: { ear_left: 2.0, ear_right: 2.0, ParamAngleZ: 10 } },
+          { time: 290, values: { ear_left: -1.1, ear_right: -1.1, ParamAngleZ: -10 } },
+          { time: 470, values: { ear_left: 1.8, ear_right: 1.8, ParamAngleZ: 7 } },
+          { time: 760, values: { ear_left: 0, ear_right: 0, ParamAngleZ: 0 } }
         ])
       ];
 
