@@ -301,6 +301,69 @@
       color: rgba(255,255,255,0.9);
     }
 
+    /* 调试切换按钮 */
+    #debug-toggle-btn {
+      position: fixed;
+      left: 10px;
+      bottom: 10px;
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 997;
+      -webkit-app-region: no-drag;
+      transition: background 0.2s;
+    }
+    #debug-toggle-btn:hover { background: rgba(255,77,141,0.3); }
+
+    /* 独立调试窗口 */
+    #debug-window {
+      position: fixed;
+      left: 10px;
+      bottom: 50px;
+      width: 240px;
+      background: rgba(20, 20, 35, 0.9);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(255,77,141,0.25), 0 0 0 1px rgba(255,255,255,0.1) inset;
+      padding: 12px;
+      z-index: 996;
+      -webkit-app-region: no-drag;
+      display: none;
+    }
+    #debug-window.visible { display: block; }
+    .dw-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.65);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .dw-close {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: rgba(255,255,255,0.5);
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: no-drag;
+    }
+    .dw-close:hover { background: rgba(255,255,255,0.2); }
+
     #input-panel-row {
       display: flex;
       gap: 8px;
@@ -388,7 +451,6 @@
         <div id="tab-bar">
           <button class="tab-btn active" data-tab="chat">对话</button>
           <button class="tab-btn" data-tab="settings">设置</button>
-          <button class="tab-btn" data-tab="debug">调试</button>
         </div>
         <button id="input-panel-close">✕</button>
       </div>
@@ -415,62 +477,68 @@
           </label>
         </div>
       </div>
-
-      <!-- 调试 Tab -->
-      <div id="debug-panel" class="tab-content">
-        <div class="slider-item">
-          <div class="slider-header">
-            <span class="slider-label">左耳 ear_left</span>
-            <span class="slider-value" id="ear-left-val">0</span>
-          </div>
-          <div class="slider-row">
-            <span style="color:rgba(255,255,255,0.3);font-size:11px;">-60</span>
-            <input type="range" id="ear-left-slider" min="-60" max="60" value="0" step="1" />
-            <span style="color:rgba(255,255,255,0.3);font-size:11px;">60</span>
-          </div>
-        </div>
-        <div class="slider-item">
-          <div class="slider-header">
-            <span class="slider-label">右耳 ear_right</span>
-            <span class="slider-value" id="ear-right-val">0</span>
-          </div>
-          <div class="slider-row">
-            <span style="color:rgba(255,255,255,0.3);font-size:11px;">-60</span>
-            <input type="range" id="ear-right-slider" min="-60" max="60" value="0" step="1" />
-            <span style="color:rgba(255,255,255,0.3);font-size:11px;">60</span>
-          </div>
-        </div>
-        <button class="btn-reset" id="btn-reset-ears">归零</button>
-
-        <!-- 模型位置 -->
-        <div class="slider-item" style="margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);">
-          <div class="slider-header">
-            <span class="slider-label">模型 X 位置</span>
-            <span class="slider-value" id="model-x-val">200</span>
-          </div>
-          <div class="slider-row">
-            <span style="color:rgba(255,255,255,0.3);font-size:11px;">50</span>
-            <input type="range" id="model-x-slider" min="50" max="350" value="200" step="1" />
-            <span style="color:rgba(255,255,255,0.3);font-size:11px;">350</span>
-          </div>
-        </div>
-        <div class="slider-item">
-          <div class="slider-header">
-            <span class="slider-label">模型 Y 位置</span>
-            <span class="slider-value" id="model-y-val">850</span>
-          </div>
-          <div class="slider-row">
-            <span style="color:rgba(255,255,255,0.3);font-size:11px;">500</span>
-            <input type="range" id="model-y-slider" min="500" max="1100" value="850" step="1" />
-            <span style="color:rgba(255,255,255,0.3);font-size:11px;">1100</span>
-          </div>
-        </div>
-        <button class="btn-reset" id="btn-reset-pos">复位</button>
-      </div>
     </div>
 
     <div id="status">
       <span id="status-text">初始化中...</span>
+    </div>
+
+    <!-- 调试切换按钮 -->
+    <button id="debug-toggle-btn" title="调试面板">🔧</button>
+
+    <!-- 调试窗口（独立） -->
+    <div id="debug-window">
+      <div class="dw-header">
+        <span>🔧 调试</span>
+        <button class="dw-close" id="debug-close-btn">✕</button>
+      </div>
+      <div class="slider-item">
+        <div class="slider-header">
+          <span class="slider-label">左耳 ear_left</span>
+          <span class="slider-value" id="ear-left-val">0</span>
+        </div>
+        <div class="slider-row">
+          <span style="color:rgba(255,255,255,0.3);font-size:11px;">-60</span>
+          <input type="range" id="ear-left-slider" min="-60" max="60" value="0" step="1" />
+          <span style="color:rgba(255,255,255,0.3);font-size:11px;">60</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <div class="slider-header">
+          <span class="slider-label">右耳 ear_right</span>
+          <span class="slider-value" id="ear-right-val">0</span>
+        </div>
+        <div class="slider-row">
+          <span style="color:rgba(255,255,255,0.3);font-size:11px;">-60</span>
+          <input type="range" id="ear-right-slider" min="-60" max="60" value="0" step="1" />
+          <span style="color:rgba(255,255,255,0.3);font-size:11px;">60</span>
+        </div>
+      </div>
+      <button class="btn-reset" id="btn-reset-ears">归零</button>
+
+      <div class="slider-item" style="margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);">
+        <div class="slider-header">
+          <span class="slider-label">模型 X 位置</span>
+          <span class="slider-value" id="model-x-val">200</span>
+        </div>
+        <div class="slider-row">
+          <span style="color:rgba(255,255,255,0.3);font-size:11px;">50</span>
+          <input type="range" id="model-x-slider" min="50" max="350" value="200" step="1" />
+          <span style="color:rgba(255,255,255,0.3);font-size:11px;">350</span>
+        </div>
+      </div>
+      <div class="slider-item">
+        <div class="slider-header">
+          <span class="slider-label">模型 Y 位置</span>
+          <span class="slider-value" id="model-y-val">850</span>
+        </div>
+        <div class="slider-row">
+          <span style="color:rgba(255,255,255,0.3);font-size:11px;">500</span>
+          <input type="range" id="model-y-slider" min="500" max="1100" value="850" step="1" />
+          <span style="color:rgba(255,255,255,0.3);font-size:11px;">1100</span>
+        </div>
+      </div>
+      <button class="btn-reset" id="btn-reset-pos">复位</button>
     </div>
   </div>
 
@@ -795,6 +863,19 @@
       modelXVal.textContent = '200';
       modelYVal.textContent = '850';
       if (model) model.position.set(200, 850);
+    });
+
+    // ========== 调试窗口开关 ==========
+    const debugWindow = document.getElementById('debug-window');
+    const debugToggleBtn = document.getElementById('debug-toggle-btn');
+    const debugCloseBtn = document.getElementById('debug-close-btn');
+
+    debugToggleBtn.addEventListener('click', () => {
+      debugWindow.classList.toggle('visible');
+    });
+
+    debugCloseBtn.addEventListener('click', () => {
+      debugWindow.classList.remove('visible');
     });
 
     sendBtn.addEventListener('click', sendMessage);
