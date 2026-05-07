@@ -24,7 +24,7 @@ async function requestMicrophonePermission() {
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 380,
-    height: 500,
+    height: 380,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -46,7 +46,7 @@ function createWindow() {
   // Position at bottom right
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
-  mainWindow.setPosition(width - 400, height - 520);
+  mainWindow.setPosition(width - 400, height - 400);
 
   // 打开开发者工具用于调试
   mainWindow.webContents.openDevTools();
