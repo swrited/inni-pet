@@ -4,6 +4,7 @@ const path = require('path');
 
 const root = __dirname;
 const children = [];
+const chatProvider = (process.env.INNI_CHAT_PROVIDER || process.env.CHAT_PROVIDER || 'minimax').toLowerCase();
 
 function start(name, command, args) {
   const child = spawn(command, args, {
@@ -89,6 +90,10 @@ setTimeout(() => {
 
 // 直接捕获键盘输入，绕过 npm 的信号拦截问题
 console.log('Inni Pet 已启动！');
+console.log(`聊天后端: ${chatProvider}`);
+if (chatProvider === 'openclaw') {
+  console.log('OpenClaw 模式会调用本机 gateway: http://127.0.0.1:28789/v1/chat/completions');
+}
 console.log('动作命令: left / right / ears / shake / random');
 console.log('按 Ctrl+C 或输入 exit 退出');
 

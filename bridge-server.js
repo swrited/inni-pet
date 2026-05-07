@@ -1,11 +1,184 @@
-// Inni Bridge Server - MiniMax Chat + TTS
+// Inni Bridge Server - Chat Gateway + MiniMax TTS
 const http = require('http');
+const fs = require('fs');
+const os = require('os');
 
-const MINIMAX_API_KEY = "sk-api-YYV9lvW4Eh1Y7yWUoI6h4J_yMNolXe0-IqL3cIqI1M_KiX1iO3ouRjMbYDvr8wpiBHrCWa7htpLJTmnAPpdMhAQSVupTr3f9WHoWWJWZA-7iKBjXrtmldJM";
-const MINIMAX_BASE_URL = "https://api.minimax.chat/v1";
+const INNI_SYSTEM_PROMPT = '你是一个可爱的桌面宠物助手，名叫 Inni。回复要简短自然，像朋友聊天一样，通常1-3句话就好，不要啰嗦。语气轻松随意，可以适当用一些语气词。';
+const CHAT_PROVIDER = (process.env.INNI_CHAT_PROVIDER || process.env.CHAT_PROVIDER || 'minimax').toLowerCase();
+const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || "sk-api-YYV9lvW4Eh1Y7yWUoI6h4J_yMNolXe0-IqL3cIqI1M_KiX1iO3ouRjMbYDvr8wpiBHrCWa7htpLJTmnAPpdMhAQSVupTr3f9WHoWWJWZA-7iKBjXrtmldJM";
+const MINIMAX_BASE_URL = process.env.MINIMAX_BASE_URL || "https://api.minimax.chat/v1";
+const MINIMAX_CHAT_MODEL = process.env.MINIMAX_CHAT_MODEL || 'MiniMax-Text-01';
+const OPENAI_COMPAT_BASE_URL = process.env.INNI_CHAT_BASE_URL || process.env.OPENAI_BASE_URL || 'http://127.0.0.1:8000/v1';
+const OPENAI_COMPAT_API_KEY = process.env.INNI_CHAT_API_KEY || process.env.OPENAI_API_KEY || 'not-needed';
+const OPENAI_COMPAT_MODEL = process.env.INNI_CHAT_MODEL || process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+const OPENCLAW_SESSION_ID = process.env.INNI_OPENCLAW_SESSION_ID || 'inni-pet';
 const gestureQueue = [];
 
 const log = (msg) => console.log(msg);
+log(`[Bridge] chat provider=${CHAT_PROVIDER}`);
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.setEncoding('utf8');
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
+
+function sendJson(res, status, data) {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(data));
+}
+
+function chatCompletion(reply, model) {
+  return {
+    id: 'chatcmpl-' + Date.now(),
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [{ index: 0, message: { role: 'assistant', content: reply }, finish_reason: 'stop' }],
+    usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+  };
+}
+
+function normalizeMessages(messages = []) {
+  const hasSystem = messages.some(message => message.role === 'system');
+  return hasSystem ? messages : [{ role: 'system', content: INNI_SYSTEM_PROMPT }, ...messages];
+}
+
+function lastUserMessage(messages = []) {
+  const last = [...messages].reverse().find(message => message.role === 'user');
+  const content = last?.content || '';
+  return Array.isArray(content)
+    ? content.map(part => part.text || part.content || '').join('\n')
+    : String(content);
+}
+
+async function chatWithMiniMax(payload) {
+  const userMessage = lastUserMessage(payload.messages);
+  const mmResponse = await fetch(`${MINIMAX_BASE_URL}/text/chatcompletion_v2`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Authorization': `Bearer ${MINIMAX_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: MINIMAX_CHAT_MODEL,
+      messages: [
+        { role: 'system', content: INNI_SYSTEM_PROMPT },
+        { role: 'user', content: userMessage }
+      ]
+    })
+  });
+
+  const data = await mmResponse.json();
+  if (data.choices && data.choices[0]) {
+    return chatCompletion(data.choices[0].message.content, MINIMAX_CHAT_MODEL);
+  }
+
+  throw new Error(data.base_resp?.status_msg || JSON.stringify(data));
+}
+
+function chatCompletionsUrl(baseUrl) {
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+  return new URL('chat/completions', cleanBase).toString();
+}
+
+function readJsonFile(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (_) {
+    return null;
+  }
+}
+
+function openClawConfig() {
+  const explicitPath = process.env.OPENCLAW_CONFIG_PATH;
+  const candidates = [
+    explicitPath,
+    `${os.homedir()}/.qclaw/openclaw.json`,
+    `${os.homedir()}/.openclaw/openclaw.json`
+  ].filter(Boolean);
+
+  for (const filePath of candidates) {
+    const config = readJsonFile(filePath);
+    if (config?.gateway?.port) {
+      return { config, filePath };
+    }
+  }
+  return { config: {}, filePath: null };
+}
+
+function openClawConnection() {
+  const { config } = openClawConfig();
+  const port = process.env.INNI_OPENCLAW_PORT || config.gateway?.port || 28789;
+  const baseUrl = process.env.INNI_OPENCLAW_BASE_URL || process.env.INNI_CHAT_BASE_URL || `http://127.0.0.1:${port}/v1`;
+  const token = process.env.INNI_OPENCLAW_TOKEN || process.env.INNI_CHAT_API_KEY || process.env.OPENCLAW_GATEWAY_TOKEN || config.gateway?.auth?.token || 'not-needed';
+  const model = process.env.INNI_CHAT_MODEL || 'openclaw:main';
+  return { baseUrl, token, model };
+}
+
+async function chatWithOpenAICompatible(payload, options = {}) {
+  const baseUrl = options.baseUrl || OPENAI_COMPAT_BASE_URL;
+  const apiKey = options.apiKey || OPENAI_COMPAT_API_KEY;
+  const model = options.model || OPENAI_COMPAT_MODEL;
+  const extraHeaders = options.headers || {};
+  const upstreamPayload = {
+    ...payload,
+    model: process.env.INNI_CHAT_MODEL || payload.model || model,
+    messages: normalizeMessages(payload.messages)
+  };
+  if (options.user && !upstreamPayload.user) {
+    upstreamPayload.user = options.user;
+  }
+
+  const response = await fetch(chatCompletionsUrl(baseUrl), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      ...extraHeaders
+    },
+    body: JSON.stringify(upstreamPayload)
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error?.message || data.message || `upstream ${response.status}`);
+  }
+
+  if (data.choices?.[0]?.message?.content) {
+    return data;
+  }
+
+  const reply = data.response || data.message?.content || data.content || data.text;
+  if (reply) {
+    return chatCompletion(reply, upstreamPayload.model);
+  }
+
+  throw new Error(`OpenAI-compatible response missing assistant content: ${JSON.stringify(data).slice(0, 500)}`);
+}
+
+async function chatWithOpenClaw(payload) {
+  const conn = openClawConnection();
+  return chatWithOpenAICompatible(payload, {
+    baseUrl: conn.baseUrl,
+    apiKey: conn.token,
+    model: conn.model,
+    user: OPENCLAW_SESSION_ID,
+    headers: { 'x-openclaw-agent-id': 'main' }
+  });
+}
+
+async function chat(payload) {
+  if (CHAT_PROVIDER === 'openclaw') return chatWithOpenClaw(payload);
+  if (CHAT_PROVIDER === 'hermes' || CHAT_PROVIDER === 'openai' || CHAT_PROVIDER === 'compatible') {
+    return chatWithOpenAICompatible(payload);
+  }
+  return chatWithMiniMax(payload);
+}
 
 function createHandler(port) {
   return http.createServer(async (req, res) => {
@@ -28,86 +201,47 @@ function createHandler(port) {
     }
 
     if (url === '/gesture' && req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
-      req.on('end', () => {
+      readBody(req).then(body => {
         try {
           const payload = JSON.parse(body || '{}');
           if (payload.gesture) {
             gestureQueue.push(payload.gesture);
             log(`[Gesture] ${payload.gesture}`);
           }
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: true }));
+          sendJson(res, 200, { ok: true });
         } catch (e) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: e.message }));
+          sendJson(res, 400, { error: e.message });
         }
-      });
+      }).catch(e => sendJson(res, 400, { error: e.message }));
       return;
     }
 
     // /v1/models
     if (url === '/v1/models' || url === '/models' || url === '/api/tags') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
+      sendJson(res, 200, {
         object: 'list',
-        data: [{ id: 'gpt-3.5-turbo', object: 'model', created: 1677610602, owned_by: 'openai' }]
-      }));
+        data: [{ id: process.env.INNI_CHAT_MODEL || OPENAI_COMPAT_MODEL, object: 'model', created: 1677610602, owned_by: CHAT_PROVIDER }]
+      });
       return;
     }
 
     // /v1/chat/completions
     if (url.startsWith('/v1/chat/completions') || url.startsWith('/chat/completions')) {
-      let body = '';
-      req.setEncoding('utf8');
-      req.on('data', chunk => body += chunk);
-      req.on('end', async () => {
+      readBody(req).then(async body => {
         try {
-          const payload = JSON.parse(body);
-          const userMessage = payload.messages?.[payload.messages.length - 1]?.content || '';
+          const payload = JSON.parse(body || '{}');
+          const userMessage = lastUserMessage(payload.messages);
           log(`[${port}] Message: ${userMessage}`);
 
-          const mmResponse = await fetch(`${MINIMAX_BASE_URL}/text/chatcompletion_v2`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json; charset=utf-8',
-              'Authorization': `Bearer ${MINIMAX_API_KEY}`
-            },
-            body: JSON.stringify({
-              model: 'MiniMax-Text-01',
-              messages: [
-                { role: 'system', content: '你是一个可爱的桌面宠物助手，名叫 Inni。回复要简短自然，像朋友聊天一样，通常1-3句话就好，不要啰嗦。语气轻松随意，可以适当用一些语气词。' },
-                { role: 'user', content: userMessage }
-              ]
-            })
-          });
-
-          const data = await mmResponse.json();
-
-          if (data.choices && data.choices[0]) {
-            const reply = data.choices[0].message.content;
-            log(`[AI] ${reply}`);
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({
-              id: 'chatcmpl-' + Date.now(),
-              object: 'chat.completion',
-              created: Math.floor(Date.now() / 1000),
-              model: 'MiniMax-Text-01',
-              choices: [{ index: 0, message: { role: 'assistant', content: reply }, finish_reason: 'stop' }],
-              usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 }
-            }));
-          } else {
-            log(`MiniMax error: ${JSON.stringify(data)}`);
-            res.writeHead(500);
-            res.end(JSON.stringify({ error: data.base_resp?.status_msg || 'API Error' }));
-          }
+          const data = await chat(payload);
+          const reply = data.choices?.[0]?.message?.content || '';
+          log(`[AI:${CHAT_PROVIDER}] ${reply}`);
+          sendJson(res, 200, data);
         } catch (e) {
           log(`Error: ${e.message}`);
-          res.writeHead(500);
-          res.end(JSON.stringify({ error: e.message }));
+          sendJson(res, 500, { error: e.message });
         }
-      });
+      }).catch(e => sendJson(res, 400, { error: e.message }));
       return;
     }
 
