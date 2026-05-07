@@ -796,10 +796,60 @@
 
     // 显示字幕
     function showSubtitle(text) {
-      subtitle.textContent = text;
-      subtitle.classList.add('visible');
       if (subtitleTimer) clearTimeout(subtitleTimer);
-      // 回复区域保留最近一条消息，不随语音播放结束自动隐藏。
+
+      const chunks = splitReplyText(text);
+      let index = 0;
+
+      const showNext = () => {
+        const chunk = chunks[index] || '';
+        subtitle.textContent = chunk;
+        subtitle.classList.add('visible');
+
+        const stayMs = Math.max(2200, Math.min(9000, 1400 + chunk.length * 120));
+        subtitleTimer = setTimeout(() => {
+          index++;
+          if (index < chunks.length) {
+            showNext();
+          } else {
+            subtitle.classList.remove('visible');
+            subtitleTimer = null;
+          }
+        }, stayMs);
+      };
+
+      showNext();
+    }
+
+    function splitReplyText(text) {
+      const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+      if (!normalized) return [''];
+
+      const maxLen = 72;
+      const sentences = normalized.match(/[^。！？!?；;]+[。！？!?；;]?/g) || [normalized];
+      const chunks = [];
+      let current = '';
+
+      for (const sentence of sentences) {
+        const part = sentence.trim();
+        if (!part) continue;
+        if ((current + part).length <= maxLen) {
+          current += part;
+          continue;
+        }
+        if (current) chunks.push(current);
+        if (part.length <= maxLen) {
+          current = part;
+        } else {
+          for (let i = 0; i < part.length; i += maxLen) {
+            chunks.push(part.slice(i, i + maxLen));
+          }
+          current = '';
+        }
+      }
+
+      if (current) chunks.push(current);
+      return chunks.length ? chunks : [normalized];
     }
 
     // 发送消息
@@ -842,8 +892,6 @@
         currentAudio.currentTime = 0;
         currentAudio = null;
       }
-      // 不再这里隐藏字幕，依赖 speak() 中 audio.onended 来隐藏
-      if (subtitleTimer) clearTimeout(subtitleTimer);
     }
 
     // 语音播放
@@ -851,7 +899,6 @@
       // 检查 TTS 开关
       if (!ttsEnabled) {
         console.log('[TTS] 语音输出已关闭');
-        if (subtitleTimer) clearTimeout(subtitleTimer);
         return;
       }
 
@@ -870,7 +917,6 @@
           currentAudio = audio;
           audio.play();
           audio.onended = () => {
-            if (subtitleTimer) clearTimeout(subtitleTimer);
             currentAudio = null;
           };
         })
