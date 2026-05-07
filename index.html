@@ -50,8 +50,13 @@
       width: 400px;
       height: 600px;
       -webkit-app-region: no-drag;
+      background: transparent;
     }
-    canvas { width: 100%; height: 100%; }
+    canvas {
+      width: 100%;
+      height: 100%;
+      background: transparent !important;
+    }
 
     /* 对话字幕 */
     #subtitle {
@@ -1199,6 +1204,8 @@
           width: 400,
           height: 600,
           transparent: true,
+          backgroundColor: 0x000000,
+          backgroundAlpha: 0,
           antialias: true,
           resolution: window.devicePixelRatio || 1,
           autoDensity: true
@@ -1224,7 +1231,6 @@
         model.interactive = true;
         model.cursor = 'pointer';
         model.on('pointertap', playRandomGesture);
-        canvas.addEventListener('click', playRandomGesture);
         model.internalModel.on('beforeModelUpdate', updateGesture);
 
         // 停掉模型自带的待机动画，防止覆盖耳朵等调试参数
