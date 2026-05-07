@@ -309,28 +309,7 @@
       z-index: 100;
     }
 
-    /* 呼出聊天按钮 */
-    #show-chat-btn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 50px;
-      height: 50px;
-      background: linear-gradient(135deg, #ff4d8d 0%, #e040fb 100%);
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 16px rgba(255,77,141,0.4);
-      z-index: 999;
-      transition: transform 0.2s;
-      -webkit-app-region: no-drag;
-    }
     button, input, canvas { -webkit-app-region: no-drag; }
-    #show-chat-btn:hover { transform: scale(1.1); }
   </style>
 </head>
 <body>
@@ -379,9 +358,6 @@
     <div id="status">
       <span id="status-text">初始化中...</span>
     </div>
-
-    <!-- 呼出聊天按钮 -->
-    <button id="show-chat-btn" title="打开聊天框">💬</button>
   </div>
 
   <!-- Pixi.js -->
@@ -914,14 +890,6 @@
     // 关闭输入框
     document.getElementById('input-panel-close').addEventListener('click', () => {
       document.getElementById('chat-container').style.display = 'none';
-      document.getElementById('show-chat-btn').style.display = 'flex';
-    });
-
-    // 呼出聊天框
-    document.getElementById('show-chat-btn').addEventListener('click', () => {
-      document.getElementById('chat-container').style.display = '';
-      document.getElementById('show-chat-btn').style.display = 'none';
-      chatInput.focus();
     });
 
     // 初始化 Live2D
