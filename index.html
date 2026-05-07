@@ -799,7 +799,7 @@
         model.cursor = 'pointer';
         model.on('pointertap', playRandomGesture);
         canvas.addEventListener('click', playRandomGesture);
-        pixiApp.ticker.add(updateGesture);
+        model.internalModel.on('beforeModelUpdate', updateGesture);
         startCursorTracking();
         startPetClickListener();
 
